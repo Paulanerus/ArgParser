@@ -1,8 +1,11 @@
 #include <iostream>
 
+#include "arg_parser.hpp"
+
 int main(int argc, char *argv[])
 {
-    std::cout << "Hello, World!" << std::endl;
+    ArgParser parser{argc, argv};
+    
 
     return EXIT_SUCCESS;
 }
