@@ -142,9 +142,7 @@ public:
     {
         os << "Commands:\n";
 
-        // Select width
-
-        // TODO (paul)
+        // TODO (paul) copy cargo help layout
 
         for (auto &cmd : arg_parser.m_Commands)
         {
