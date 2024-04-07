@@ -10,31 +10,31 @@ int main(int argc, char *argv[])
 
     ArgParser parser;
 
-    parser.command("add"s, "a"s);
+    parser.command("help", "h")
+        .help("Shows help.");
 
-    /*
-    parser.command("Help", "me");
+    parser.command("new", "n", "create", "c")
+        .help("Creates a new project.");
 
     parser.command("add", "a")
-        .help("Adds a library to the project")
+        .help("Adds a new dependency.");
 
-        .argument("link", "l")
-            .flag()
-            .help("Marks the added library as a link library")
-            .end()
+    parser.command("remove", "rm", "delete", "del")
+        .help("Removes a dependency.");
 
-        .argument("name", "n")
-            .required()
-            .help("The name of the library to add")
-            .end();
+    parser.command("build", "b")
+        .help("Builds the project.")
+        .argument(Argument::Flag({"debug", "d"}, "Runs debug build."))
+        .argument(Argument::Flag({"release", "r"}, "Runs release build."));
 
-        .argument("path", "p");
-            .default(".")
-            .help("The path to the library to add")
-            .end();
-    */
+    parser.command("run", "r")
+        .help("Executes the project and perform a build, if needed.")
+        .argument(Argument::Flag({"debug", "d"}, "Runs debug build."))
+        .argument(Argument::Flag({"release", "r"}, "Runs release build."));
 
     parser.parse(arguments, 5, 0);
+
+    std::cout << parser << std::endl;
 
     return EXIT_SUCCESS;
 }
