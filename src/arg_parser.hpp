@@ -129,7 +129,7 @@ public:
         std::cout << "Options:\n";
 
         for (auto &arg : m_Arguments)
-            std::cout << "    " << arg << std::setw(17 - arg.totalIdentifierLength()) << " " << arg.help << "\n";
+            std::cout << "    " << arg << (arg.isFlag() ? "" : " <value> ") << std::setw(17 - arg.totalIdentifierLength()) << " " << arg.help << "\n";
 
         std::cout << std::endl;
     }
@@ -226,7 +226,7 @@ public:
 
         os << "\n";
 
-        // os << "See 'tram help <command>' for more information on a specific command.";
+        os << "See 'tram help <command>' for more information on a specific command.";
 
         return os;
     }
