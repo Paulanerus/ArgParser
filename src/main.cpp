@@ -10,9 +10,6 @@ int main(int argc, char *argv[])
 
     ArgParser parser;
 
-    parser.command("help", "h")
-        .help("Shows help.");
-
     parser.command("new", "n", "create", "c")
         .help("Creates a new project.");
 
@@ -24,15 +21,18 @@ int main(int argc, char *argv[])
 
     parser.command("build", "b")
         .help("Builds the project.")
-        .argument(Argument::Flag({"debug", "d"}, "Runs debug build."))
-        .argument(Argument::Flag({"release", "r"}, "Runs release build."));
+        .argument(Argument::Flag({"--debug", "-d"}, "Runs debug build."))
+        .argument(Argument::Flag({"--release", "-r"}, "Runs release build."));
 
     parser.command("run", "r")
         .help("Executes the project and perform a build, if needed.")
-        .argument(Argument::Flag({"debug", "d"}, "Runs debug build."))
-        .argument(Argument::Flag({"release", "r"}, "Runs release build."));
+        .allowsArguments()
+        .argument(Argument::Flag({"--debug", "-d"}, "Runs debug build."))
+        .argument(Argument::Flag({"--release", "-r"}, "Runs release build."));
 
-    parser.parse(arguments, 5, 0);
+    auto unused = parser.parse(arguments, 5, 0);
+
+    // parser("build");
 
     std::cout << parser << std::endl;
 
