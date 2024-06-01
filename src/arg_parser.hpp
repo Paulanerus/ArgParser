@@ -13,6 +13,7 @@
 #include <iomanip>
 #include <string>
 #include <vector>
+#include <ranges>
 #include <any>
 
 struct Option
@@ -116,16 +117,9 @@ public:
 
     bool operator[](std::string_view option_id) const noexcept
     {
-        for (auto &option : m_Options)
-        {
-            for (auto &identifier : option.identifier)
-            {
-                if (option_id == identifier)
-                    return true;
-            }
-        }
-
-        return false;
+        return std::ranges::any_of(m_Options, [option_id](const auto &option)
+                                   { return std::ranges::any_of(option.identifier, [option_id](const auto &id)
+                                                                { return option_id == id; }); });
     }
 
     std::string_view help() const noexcept
@@ -145,13 +139,8 @@ public:
 
     bool hasIdentifier(std::string_view identifier) const noexcept
     {
-        for (auto &id : m_Identifier)
-        {
-            if (id == identifier)
-                return true;
-        }
-
-        return false;
+        return std::ranges::any_of(m_Identifier, [identifier](const auto &id)
+                                   { return id == identifier; });
     }
 
     size_t totalIdentifierLength() const noexcept
@@ -178,7 +167,8 @@ class ArgParser
 public:
     ArgParser() noexcept = default;
 
-    template <typename... Args, typename = std::enable_if_t<std::conjunction_v<std::is_convertible<Args, std::string>...>>>
+    template <typename... Args>
+        requires(std::convertible_to<Args, std::string> && ...)
     Command &command(Args &&...args) noexcept
     {
         std::vector<std::string> identifier{std::forward<Args>(args)...};
@@ -202,7 +192,7 @@ public:
         if (!command_opt.has_value())
         {
             std::cout << "Unknown command '" << args[0] << "'\n";
-            std::cout << "Did you mean '" << getSimilar(args[0]) << "'?" << std::endl;
+            std::cout << "Did you mean: '" << getSimilar(args[0]) << "'?" << std::endl;
             return;
         }
 
@@ -251,32 +241,25 @@ public:
 private:
     std::vector<Command> m_Commands;
 
-    std::optional<Command> getCommandBy(std::string_view identifier)
+    std::optional<Command> getCommandBy(std::string_view identifier) const
     {
-        for (auto &cmd : m_Commands)
-        {
-            if (cmd.hasIdentifier(identifier))
-                return cmd;
-        }
+        auto has_identifier = [identifier](const Command &cmd)
+        { return cmd.hasIdentifier(identifier); };
+
+        if (auto cmd = std::ranges::find_if(m_Commands, has_identifier); cmd != m_Commands.end())
+            return *cmd;
 
         return std::nullopt;
     }
 
-    std::string getSimilar(std::string_view identifier)
+    std::string getSimilar(std::string_view identifier) const
     {
-        size_t current_dist = 100;
-        std::string most_similar;
-        for (auto &cmd : m_Commands)
-        {
-            auto dist = calculateDistance(identifier, cmd.identifier()[0]);
+        auto distance_compare = [identifier](const auto &lhs, const auto &rhs)
+        { return calculateDistance(identifier, lhs.identifier()[0]) < calculateDistance(identifier, rhs.identifier()[0]); };
 
-            if (dist < current_dist)
-            {
-                current_dist = dist;
-                most_similar = cmd.identifier()[0];
-            }
-        }
+        if (auto min_distance = std::ranges::min_element(m_Commands, distance_compare); min_distance != m_Commands.end())
+            return min_distance->identifier()[0];
 
-        return most_similar;
+        return "help";
     }
 };
