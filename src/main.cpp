@@ -4,11 +4,12 @@
 
 int main(int argc, char *argv[])
 {
-    using namespace std::string_literals;
-
-    const char *arguments[] = {"add", "-l", "-n", "test", "-p"};
+    // std::cout << calculateDistance("adfda", "add") << std::endl;
 
     ArgParser parser;
+
+    parser.command("help", "h")
+        .help("Shows help.");
 
     parser.command("new", "n", "create", "c")
         .help("Creates a new project.");
@@ -21,20 +22,15 @@ int main(int argc, char *argv[])
 
     parser.command("build", "b")
         .help("Builds the project.")
-        .argument(Argument::Flag({"--debug", "-d"}, "Runs debug build."))
-        .argument(Argument::Flag({"--release", "-r"}, "Runs release build."));
+        .option(Option::Flag({"--debug", "-d"}, "Runs debug build."))
+        .option(Option::Flag({"--release", "-r"}, "Runs release build."));
 
     parser.command("run", "r")
         .help("Executes the project and perform a build, if needed.")
-        .allowsArguments()
-        .argument(Argument::Flag({"--debug", "-d"}, "Runs debug build."))
-        .argument(Argument::Flag({"--release", "-r"}, "Runs release build."));
+        .option(Option::Flag({"--debug", "-d"}, "Runs debug build."))
+        .option(Option::Flag({"--release", "-r"}, "Runs release build."));
 
-    auto unused = parser.parse(arguments, 5, 0);
-
-    // parser("build");
-
-    std::cout << parser << std::endl;
+    parser.parse(argv, argc);
 
     return EXIT_SUCCESS;
 }

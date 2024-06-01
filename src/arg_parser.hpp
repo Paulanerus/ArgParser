@@ -1,9 +1,11 @@
 #pragma once
 
 #include "strings.hpp"
+#include "levenshtein.hpp"
 
 #include <initializer_list>
 #include <type_traits>
+#include <functional>
 #include <algorithm>
 #include <iostream>
 #include <optional>
@@ -13,7 +15,7 @@
 #include <vector>
 #include <any>
 
-struct Argument
+struct Option
 {
     std::vector<std::string> identifier;
 
@@ -49,14 +51,9 @@ struct Argument
         return size - 2;
     }
 
-    friend std::ostream &operator<<(std::ostream &os, const Argument &argument)
+    static Option Flag(std::initializer_list<std::string> &&identifier, std::string &&help_txt)
     {
-        return os << Join(argument.identifier);
-    }
-
-    static Argument Flag(std::initializer_list<std::string> &&identifier, std::string &&help_txt)
-    {
-        return Argument{
+        return Option{
             .identifier = std::move(identifier),
             .help = std::move(help_txt),
             .flag = true,
@@ -65,9 +62,9 @@ struct Argument
     }
 
     template <typename T>
-    static Argument Default(std::initializer_list<std::string> &&identifier, std::string &&help_txt, T &&any)
+    static Option Default(std::initializer_list<std::string> &&identifier, std::string &&help_txt, T &&any)
     {
-        return Argument{
+        return Option{
             .identifier = std::move(identifier),
             .help = std::move(help_txt),
             .flag = false,
@@ -75,9 +72,9 @@ struct Argument
             .value = std::move(any)};
     }
 
-    static Argument Required(std::initializer_list<std::string> &&identifier, std::string &&help_txt)
+    static Option Required(std::initializer_list<std::string> &&identifier, std::string &&help_txt)
     {
-        return Argument{
+        return Option{
             .identifier = std::move(identifier),
             .help = std::move(help_txt),
             .flag = false,
@@ -98,18 +95,37 @@ public:
         return *this;
     }
 
-    Command &argument(Argument &&arg) noexcept
+    Command &option(Option &&arg) noexcept
     {
-        m_Arguments.push_back(std::move(arg));
+        m_Options.push_back(std::move(arg));
 
         return *this;
     }
 
-    Command &allowsArguments() noexcept
+    Command &action(std::function<void(const Command &command)> &&func)
     {
-        m_AllowArguments = true;
+        m_Func = std::move(func);
 
         return *this;
+    }
+
+    void operator()() noexcept
+    {
+        m_Func(*this);
+    }
+
+    bool operator[](std::string_view option_id) const noexcept
+    {
+        for (auto &option : m_Options)
+        {
+            for (auto &identifier : option.identifier)
+            {
+                if (option_id == identifier)
+                    return true;
+            }
+        }
+
+        return false;
     }
 
     std::string_view help() const noexcept
@@ -117,21 +133,14 @@ public:
         return m_Help;
     }
 
-    const std::vector<Argument> &arguments() const noexcept
+    const std::vector<Option> &options() const noexcept
     {
-        return m_Arguments;
+        return m_Options;
     }
 
-    void printHelp() const noexcept
+    const std::vector<std::string> &identifier() const noexcept
     {
-        std::cout << "Usage: tram " << m_Identifier[0] << (m_Arguments.size() > 0 ? " [Options]" : "") << (m_AllowArguments ? " [Args] " : "") << " \n\n";
-
-        std::cout << "Options:\n";
-
-        for (auto &arg : m_Arguments)
-            std::cout << "    " << arg << (arg.isFlag() ? "" : " <value> ") << std::setw(17 - arg.totalIdentifierLength()) << " " << arg.help << "\n";
-
-        std::cout << std::endl;
+        return m_Identifier;
     }
 
     bool hasIdentifier(std::string_view identifier) const noexcept
@@ -154,29 +163,20 @@ public:
         return size - 2;
     }
 
-    friend std::ostream &operator<<(std::ostream &os, const Command &command)
-    {
-        return os << Join(command.m_Identifier);
-    }
-
 private:
     std::vector<std::string> m_Identifier;
 
     std::string m_Help;
 
-    std::vector<Argument> m_Arguments;
+    std::vector<Option> m_Options;
 
-    bool m_AllowArguments;
+    std::function<void(const Command &command)> m_Func;
 };
 
 class ArgParser
 {
 public:
-    ArgParser() noexcept
-    {
-        command("help", "h")
-            .help("Shows help.");
-    }
+    ArgParser() noexcept = default;
 
     template <typename... Args, typename = std::enable_if_t<std::conjunction_v<std::is_convertible<Args, std::string>...>>>
     Command &command(Args &&...args) noexcept
@@ -186,49 +186,66 @@ public:
         return m_Commands.emplace_back(std::move(identifier));
     }
 
-    std::vector<std::string> parse(const char *argv[], int argc, size_t start = 1)
+    void parse(char *argv[], int argc, size_t start = 1)
     {
+        if (argc - start == 0)
+            return;
+
         std::vector<std::string> args{argv + start, argv + argc};
 
         std::for_each(args.begin(), args.end(), [](std::string &arg)
                       { std::transform(arg.begin(), arg.end(), arg.begin(), [](uint8_t c)
                                        { return std::tolower(c); }); });
 
-        // Actual parsing
+        auto command_opt = getCommandBy(args[0]);
 
-        return args;
+        if (!command_opt.has_value())
+        {
+            std::cout << "Unknown command '" << args[0] << "'\n";
+            std::cout << "Did you mean '" << getSimilar(args[0]) << "'?" << std::endl;
+            return;
+        }
+
+        std::cout << "Command execute: " << args[0] << std::endl;
+        // command_opt.value()();
     }
 
     void operator()(std::string_view identifier)
     {
         if (identifier.empty())
-            std::cout << *this << std::endl;
+        {
+            std::cout << "Usage: tram [Command] [Options]\n\n";
 
-        auto command = getCommandBy(identifier);
+            std::cout << "Commands:\n";
 
-        if (!command.has_value())
+            for (auto &cmd : m_Commands)
+                std::cout << "    " << Join(cmd.identifier()) << std::setw(27 - cmd.totalIdentifierLength()) << " " << cmd.help() << "\n";
+
+            std::cout << "\n";
+
+            std::cout << "See 'tram help <command>' for more information on a specific command." << std::endl;
+
+            return;
+        }
+
+        auto command_result = getCommandBy(identifier);
+
+        if (!command_result)
         {
             std::cout << "Command '" << identifier << "' not found!" << std::endl;
             return;
         }
 
-        command.value().printHelp();
-    }
+        auto command = command_result.value();
 
-    friend std::ostream &operator<<(std::ostream &os, const ArgParser &arg_parser)
-    {
-        os << "Usage: tram [Command] [Options]\n\n";
+        std::cout << "Usage: tram " << command.identifier()[0] << (command.options().size() > 0 ? " [Options]" : "") << " [Args] \n\n";
 
-        os << "Commands:\n";
+        std::cout << "Options:\n";
 
-        for (auto &cmd : arg_parser.m_Commands)
-            os << "    " << cmd << std::setw(27 - cmd.totalIdentifierLength()) << " " << cmd.help() << "\n";
+        for (auto &arg : command.options())
+            std::cout << "    " << Join(arg.identifier) << (arg.isFlag() ? "" : " <value> ") << std::setw(17 - arg.totalIdentifierLength()) << " " << arg.help << "\n";
 
-        os << "\n";
-
-        os << "See 'tram help <command>' for more information on a specific command.";
-
-        return os;
+        std::cout << std::endl;
     }
 
 private:
@@ -243,5 +260,23 @@ private:
         }
 
         return std::nullopt;
+    }
+
+    std::string getSimilar(std::string_view identifier)
+    {
+        size_t current_dist = 100;
+        std::string most_similar;
+        for (auto &cmd : m_Commands)
+        {
+            auto dist = calculateDistance(identifier, cmd.identifier()[0]);
+
+            if (dist < current_dist)
+            {
+                current_dist = dist;
+                most_similar = cmd.identifier()[0];
+            }
+        }
+
+        return most_similar;
     }
 };
