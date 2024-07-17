@@ -12,12 +12,16 @@ project "ArgParser"
     files {"src/**.hpp", "src/**.cpp"}
 
     filter "configurations:Debug"
-        linkoptions{"-fuse-ld=mold"}
+        filter "system:linux"
+            linkoptions{"-fuse-ld=mold"}
+
         defines { "DEBUG" }
         symbols "On"
 
     filter "configurations:Release"
-        linkoptions{"-fuse-ld=mold"}
+        filter "system:linux"
+            linkoptions{"-fuse-ld=mold"}
+        
         defines { "NDEBUG" }
         optimize "On"
         symbols "Off"
