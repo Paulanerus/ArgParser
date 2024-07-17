@@ -24,5 +24,6 @@ project "ArgParser"
         filter "system:linux"
             linkoptions{"-fuse-ld=mold"}
         
+        defines { "NDEBUG" }
         optimize "On"
         symbols "Off"
