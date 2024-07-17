@@ -9,6 +9,8 @@ project "ArgParser"
     targetdir "bin/%{cfg.buildcfg}"
     location "build/"
 
+    warnings "Extra"
+
     files {"src/**.hpp", "src/**.cpp"}
 
     filter "configurations:Debug"
@@ -22,6 +24,5 @@ project "ArgParser"
         filter "system:linux"
             linkoptions{"-fuse-ld=mold"}
         
-        defines { "NDEBUG" }
         optimize "On"
         symbols "Off"
