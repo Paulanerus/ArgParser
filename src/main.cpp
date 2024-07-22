@@ -5,7 +5,7 @@
 
 int main(int argc, char *argv[])
 {
-    ArgParser parser;
+    ArgParser parser{"tram"};
 
     parser.command("help", "h")
         .help("Shows help.")
@@ -17,6 +17,8 @@ int main(int argc, char *argv[])
 
     parser.command("add", "a")
         .help("Adds a new dependency.")
+        .option(Option::Flag({"--branch", "-b"}, "Select a specific branch."))
+        .option(Option::Flag({"--link", "-l"}, "Links the specified library."))
         .action(ADD_ACTION);
 
     parser.command("remove", "rm", "delete", "del")

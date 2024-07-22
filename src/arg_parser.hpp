@@ -2,19 +2,19 @@
 
 #include "strings.hpp"
 
+#include <initializer_list>
 #include <type_traits>
+#include <string_view>
+#include <functional>
+#include <algorithm>
 #include <iostream>
 #include <optional>
 #include <cstdint>
 #include <iomanip>
-#include <ranges>
-
-#include <initializer_list>
-#include <string_view>
-#include <functional>
-#include <algorithm>
 #include <vector>
 #include <string>
+#include <format>
+#include <ranges>
 #include <any>
 
 class ArgParser;
@@ -27,23 +27,16 @@ struct Option
 
     bool flag;
 
-    bool required;
-
     std::any value;
 
     bool isFlag() const noexcept
     {
-        return flag && !required;
+        return flag;
     }
 
     bool isDefault() const noexcept
     {
-        return !flag && !required;
-    }
-
-    bool isRequired() const noexcept
-    {
-        return !flag && required;
+        return !flag;
     }
 
     size_t totalIdentifierLength() const noexcept
@@ -61,7 +54,6 @@ struct Option
             .identifier = std::move(identifier),
             .help = std::move(help_txt),
             .flag = true,
-            .required = false,
             .value = {}};
     }
 
@@ -72,18 +64,7 @@ struct Option
             .identifier = std::move(identifier),
             .help = std::move(help_txt),
             .flag = false,
-            .required = false,
             .value = std::move(any)};
-    }
-
-    static Option Required(std::initializer_list<std::string> &&identifier, std::string &&help_txt)
-    {
-        return Option{
-            .identifier = std::move(identifier),
-            .help = std::move(help_txt),
-            .flag = false,
-            .required = true,
-            .value = {}};
     }
 };
 
@@ -168,7 +149,7 @@ private:
 class ArgParser
 {
 public:
-    ArgParser() noexcept = default;
+    ArgParser(std::string &&app_name) noexcept : m_AppName(app_name) {}
 
     template <typename... Args>
         requires(std::convertible_to<Args, std::string> && ...)
@@ -199,16 +180,20 @@ public:
             return;
         }
 
+        auto command = command_opt.value();
+
+        // Identify known flags with its values
+
         m_Args.erase(m_Args.begin());
 
-        command_opt.value().execute(*this);
+        command.execute(*this);
     }
 
     void operator()(std::string_view identifier) const
     {
         if (identifier.empty())
         {
-            std::cout << "Usage: tram [Command] [Options]\n\n";
+            std::cout << std::format("Usage: {} [Command] [Options]\n\n", m_AppName);
 
             std::cout << "Commands:\n";
 
@@ -217,7 +202,7 @@ public:
 
             std::cout << "\n";
 
-            std::cout << "See 'tram help <command>' for more information on a specific command." << std::endl;
+            std::cout << std::format("See '{} help <command>' for more information on a specific command.", m_AppName) << std::endl;
 
             return;
         }
@@ -232,7 +217,7 @@ public:
 
         auto command = command_result.value();
 
-        std::cout << "Usage: tram " << command.identifier()[0] << (command.options().size() > 0 ? " [Options]" : "") << " [Args] \n\n";
+        std::cout << std::format("Usage: {} {} {} [Args] \n\n", m_AppName, command.identifier()[0], command.options().size() > 0 ? "[Options]" : "");
 
         std::cout << "Options:\n";
 
@@ -261,6 +246,8 @@ public:
     }
 
 private:
+    const std::string m_AppName;
+
     std::vector<Command> m_Commands;
 
     std::vector<std::string> m_Args;
