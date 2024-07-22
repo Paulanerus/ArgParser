@@ -1,34 +1,39 @@
 #include <iostream>
 
+#include "commands.hpp"
 #include "arg_parser.hpp"
 
 int main(int argc, char *argv[])
 {
-    // std::cout << calculateDistance("adfda", "add") << std::endl;
-
     ArgParser parser;
 
     parser.command("help", "h")
-        .help("Shows help.");
+        .help("Shows help.")
+        .action(HELP_ACTION);
 
     parser.command("new", "n", "create", "c")
-        .help("Creates a new project.");
+        .help("Creates a new project.")
+        .action(NEW_ACTION);
 
     parser.command("add", "a")
-        .help("Adds a new dependency.");
+        .help("Adds a new dependency.")
+        .action(ADD_ACTION);
 
     parser.command("remove", "rm", "delete", "del")
-        .help("Removes a dependency.");
+        .help("Removes a dependency.")
+        .action(REMOVE_ACTION);
 
     parser.command("build", "b")
         .help("Builds the project.")
         .option(Option::Flag({"--debug", "-d"}, "Runs debug build."))
-        .option(Option::Flag({"--release", "-r"}, "Runs release build."));
+        .option(Option::Flag({"--release", "-r"}, "Runs release build."))
+        .action(BUILD_ACTION);
 
     parser.command("run", "r")
         .help("Executes the project and perform a build, if needed.")
         .option(Option::Flag({"--debug", "-d"}, "Runs debug build."))
-        .option(Option::Flag({"--release", "-r"}, "Runs release build."));
+        .option(Option::Flag({"--release", "-r"}, "Runs release build."))
+        .action(RUN_ACTION);
 
     parser.parse(argv, argc);
 
