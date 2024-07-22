@@ -1,7 +1,6 @@
 #pragma once
 
 #include "arg_parser.hpp"
-#include "strings.hpp"
 
 inline auto HELP_ACTION = [](const ArgParser &parser, [[maybe_unused]] const auto &_)
 {
