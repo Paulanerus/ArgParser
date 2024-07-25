@@ -27,7 +27,8 @@ inline auto BUILD_ACTION = []([[maybe_unused]] const ArgParser &parser, [[maybe_
     std::cout << "Build" << std::endl;
 };
 
-inline auto RUN_ACTION = []([[maybe_unused]] const ArgParser &parser, [[maybe_unused]] const Command &cmd)
+inline auto RUN_ACTION = []([[maybe_unused]] const ArgParser &parser, const Command &cmd)
 {
-    std::cout << "Run" << std::endl;
+    if (cmd["--debug"])
+        std::cout << "Debug was specified" << std::endl;
 };

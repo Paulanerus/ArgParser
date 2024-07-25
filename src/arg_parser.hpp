@@ -27,21 +27,13 @@ struct Option
 
     bool flag;
 
+    bool active;
+
     std::any value;
 
-    bool isFlag() const noexcept
+    operator std::size_t() const noexcept
     {
-        return flag;
-    }
-
-    bool isDefault() const noexcept
-    {
-        return !flag;
-    }
-
-    size_t totalIdentifierLength() const noexcept
-    {
-        size_t size{};
+        std::size_t size{};
         for (auto &id : identifier)
             size += id.length() + 2;
 
@@ -54,6 +46,7 @@ struct Option
             .identifier = std::move(identifier),
             .help = std::move(help_txt),
             .flag = true,
+            .active = false,
             .value = {}};
     }
 
@@ -64,6 +57,7 @@ struct Option
             .identifier = std::move(identifier),
             .help = std::move(help_txt),
             .flag = false,
+            .active = false,
             .value = std::move(any)};
     }
 };
@@ -99,11 +93,27 @@ public:
         m_Func(parser, *this);
     }
 
-    bool operator[](std::string_view option_id) const noexcept
+    template <typename Arg>
+        requires(std::convertible_to<Arg, std::string_view>)
+    bool operator[](Arg option_id) const noexcept
     {
-        return std::ranges::any_of(m_Options, [option_id](const auto &option)
-                                   { return std::ranges::any_of(option.identifier, [option_id](const auto &id)
-                                                                { return option_id == id; }); });
+        return std::ranges::any_of(m_Options, [option_id](const Option &opt)
+                                   { return opt.active && std::ranges::any_of(opt.identifier, [option_id](const std::string &id)
+                                                                              { return option_id == id; }); });
+    }
+
+    bool hasOption(const std::string &opt_str)
+    {
+        auto contains_option = [&opt_str](const auto &opt)
+        { return std::ranges::find(opt.identifier, opt_str) != opt.identifier.end(); };
+
+        if (auto opt = std::ranges::find_if(m_Options, contains_option); opt != m_Options.end())
+        {
+            opt->active = true;
+            return true;
+        }
+
+        return false;
     }
 
     std::string_view help() const noexcept
@@ -127,9 +137,9 @@ public:
                                    { return id == identifier; });
     }
 
-    size_t totalIdentifierLength() const noexcept
+    operator std::size_t() const noexcept
     {
-        size_t size{};
+        std::size_t size{};
         for (auto &id : m_Identifier)
             size += id.length() + 2;
 
@@ -182,9 +192,10 @@ public:
 
         auto command = command_opt.value();
 
-        // Identify known flags with its values
+        auto it = std::ranges::remove_if(m_Args, [&](const std::string &arg)
+                                         { return arg == m_Args[0] || command.hasOption(arg); });
 
-        m_Args.erase(m_Args.begin());
+        m_Args.erase(it.begin(), it.end());
 
         command.execute(*this);
     }
@@ -198,7 +209,7 @@ public:
             std::cout << "Commands:\n";
 
             for (auto &cmd : m_Commands)
-                std::cout << "    " << Join(cmd.identifier()) << std::setw(27 - cmd.totalIdentifierLength()) << " " << cmd.help() << "\n";
+                std::cout << "    " << Join(cmd.identifier()) << std::setw(27 - (std::size_t)cmd) << " " << cmd.help() << "\n";
 
             std::cout << "\n";
 
@@ -222,7 +233,7 @@ public:
         std::cout << "Options:\n";
 
         for (auto &arg : command.options())
-            std::cout << "    " << Join(arg.identifier) << (arg.isFlag() ? "" : " <value> ") << std::setw(17 - arg.totalIdentifierLength()) << " " << arg.help << "\n";
+            std::cout << "    " << Join(arg.identifier) << (arg.flag ? "" : " <value> ") << std::setw(17 - (std::size_t)arg) << " " << arg.help << "\n";
 
         std::cout << std::endl;
     }
