@@ -4,7 +4,7 @@
 
 inline auto HELP_ACTION = [](const ArgParser &parser, [[maybe_unused]] const auto &_)
 {
-    parser(parser.argAt(0));
+    parser(parser[0]);
 };
 
 inline auto NEW_ACTION = []([[maybe_unused]] const ArgParser &parser, [[maybe_unused]] const Command &cmd)

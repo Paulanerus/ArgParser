@@ -243,14 +243,9 @@ public:
         return m_Args;
     }
 
-    bool hasRemaining() const noexcept
+    std::string operator[](size_t idx) const noexcept
     {
-        return m_Args.size() > 0;
-    }
-
-    std::string argAt(size_t idx) const noexcept
-    {
-        if (hasRemaining() && m_Args.size() - 1 - idx >= 0)
+        if (m_Args.size() > 0 && m_Args.size() - 1 - idx >= 0)
             return m_Args[idx];
 
         return "";
