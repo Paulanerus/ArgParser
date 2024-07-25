@@ -11,6 +11,8 @@ project "ArgParser"
 
     warnings "Extra"
 
+    includedirs {"include/"}
+
     files {"src/**.hpp", "src/**.cpp"}
 
     filter "configurations:Debug"
