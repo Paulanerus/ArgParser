@@ -27,33 +27,30 @@ std::string Join(const std::vector<std::string> &vec, const char *delimiter = ",
     return stream.str();
 }
 
-size_t LevenshteinDistance(std::convertible_to<std::string_view> auto src, std::convertible_to<std::string_view> auto target)
+std::size_t LevenshteinDistance(std::convertible_to<std::string_view> auto src, std::convertible_to<std::string_view> auto target)
 {
-    std::string_view src_view = src;
-    std::string_view target_view = target;
-
-    if (src_view == target_view)
+    if (src == target)
         return 0;
 
-    if (src_view.empty() || target_view.empty())
-        return std::max(src_view.length(), target_view.length());
+    if (src.empty() || target.empty())
+        return std::max(src.length(), target.length());
 
-    std::vector<size_t> distance(target_view.length() + 1);
+    std::vector<std::size_t> distance(target.length() + 1);
 
-    for (size_t i{}; i < src_view.length(); i++)
+    for (std::size_t i{}; i < src.length(); i++)
     {
         distance[0] = i + 1;
 
         auto corner = i;
 
-        for (size_t j{}; j < target_view.length(); j++)
+        for (size_t j{}; j < target.length(); j++)
         {
             auto upper = distance[j + 1];
 
-            distance[j + 1] = src_view[i] == target_view[j] ? corner : std::min({upper, corner, distance[j]}) + 1;
+            distance[j + 1] = src[i] == target[j] ? corner : std::min({upper, corner, distance[j]}) + 1;
             corner = upper;
         }
     }
 
-    return distance[target_view.length()];
+    return distance[target.length()];
 }
