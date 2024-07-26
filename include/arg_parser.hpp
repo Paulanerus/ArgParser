@@ -90,6 +90,9 @@ public:
 
     void execute(const ArgParser &parser) noexcept
     {
+        if (m_Func == nullptr)
+            return;
+
         m_Func(parser, *this);
     }
 
@@ -245,7 +248,7 @@ public:
 
     std::string operator[](size_t idx) const noexcept
     {
-        if (m_Args.size() > 0 && m_Args.size() - 1 - idx >= 0)
+        if (idx < m_Args.size())
             return m_Args[idx];
 
         return "";
