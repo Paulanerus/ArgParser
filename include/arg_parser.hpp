@@ -2,20 +2,20 @@
 
 #include "strings.hpp"
 
-#include <initializer_list>
-#include <type_traits>
 #include <string_view>
+#include <type_traits>
 #include <functional>
 #include <algorithm>
-#include <iostream>
 #include <optional>
-#include <cstdint>
+#include <iostream>
 #include <iomanip>
+#include <utility>
 #include <vector>
-#include <string>
-#include <format>
 #include <ranges>
-#include <any>
+#include <format>
+#include <string>
+
+#include <unordered_set>
 
 class ArgParser;
 
@@ -29,7 +29,7 @@ struct Option
 
     bool active;
 
-    std::any value;
+    std::string value;
 
     operator std::size_t() const noexcept
     {
@@ -50,15 +50,14 @@ struct Option
             .value = {}};
     }
 
-    template <typename T>
-    static Option Default(std::initializer_list<std::string> &&identifier, std::string &&help_txt, T &&any)
+    static Option Value(std::initializer_list<std::string> &&identifier, std::string &&help_txt, std::string &&val)
     {
         return Option{
             .identifier = std::move(identifier),
             .help = std::move(help_txt),
             .flag = false,
             .active = false,
-            .value = std::move(any)};
+            .value = std::move(val)};
     }
 };
 
@@ -105,7 +104,20 @@ public:
                                                                               { return option_id == id; }); });
     }
 
-    bool hasOption(const std::string &opt_str)
+    std::string &operator[](const std::string &option) noexcept
+    {
+        static std::string fallback;
+
+        auto it = std::ranges::find_if(m_Options, [&option](const Option &opt)
+                                       { return std::ranges::any_of(opt.identifier, [&option](const std::string &id)
+                                                                    { return option == id; }); });
+        if (it == m_Options.end())
+            return fallback; // Should never happen...
+
+        return it->value;
+    }
+
+    std::pair<bool, bool> hasOption(const std::string &opt_str)
     {
         auto contains_option = [&opt_str](const auto &opt)
         { return std::ranges::find(opt.identifier, opt_str) != opt.identifier.end(); };
@@ -113,10 +125,10 @@ public:
         if (auto opt = std::ranges::find_if(m_Options, contains_option); opt != m_Options.end())
         {
             opt->active = true;
-            return true;
+            return std::make_pair(true, opt->flag);
         }
 
-        return false;
+        return std::make_pair(false, false);
     }
 
     std::string_view help() const noexcept
@@ -173,7 +185,7 @@ public:
         return m_Commands.emplace_back(std::move(identifier));
     }
 
-    void parse(char *argv[], int argc, size_t start = 1)
+    void parse(char *argv[], int argc, std::size_t start = 1)
     {
         if (argc - start == 0)
             return;
@@ -181,7 +193,7 @@ public:
         m_Args.assign(argv + start, argv + argc);
 
         std::for_each(m_Args.begin(), m_Args.end(), [](std::string &arg)
-                      { std::transform(arg.begin(), arg.end(), arg.begin(), [](uint8_t c)
+                      { std::transform(arg.begin(), arg.end(), arg.begin(), [](auto c)
                                        { return std::tolower(c); }); });
 
         auto command_opt = getCommandBy(m_Args[0]);
@@ -195,8 +207,38 @@ public:
 
         auto command = command_opt.value();
 
+        std::unordered_set<std::size_t> indieces{0};
+        for (std::size_t i{}; i < m_Args.size(); i++)
+        {
+            auto [c_has, c_flag] = command.hasOption(m_Args[i]);
+
+            if (!c_has)
+                continue;
+
+            if (c_flag)
+            {
+                indieces.insert(i);
+                continue;
+            }
+
+            if (i + 1 >= m_Args.size())
+                continue;
+
+            auto [n_has, _] = command.hasOption(m_Args[i + 1]);
+
+            if (n_has)
+            {
+                indieces.insert(i);
+                continue;
+            }
+
+            command[m_Args[i]] = m_Args[i + 1];
+
+            indieces.insert({i, i + 1});
+        }
+
         auto it = std::ranges::remove_if(m_Args, [&](const std::string &arg)
-                                         { return arg == m_Args[0] || command.hasOption(arg); });
+                                         { return indieces.contains(&arg - &m_Args[0]); });
 
         m_Args.erase(it.begin(), it.end());
 
@@ -246,7 +288,7 @@ public:
         return m_Args;
     }
 
-    std::string operator[](size_t idx) const noexcept
+    std::string operator[](std::size_t idx) const noexcept
     {
         if (idx < m_Args.size())
             return m_Args[idx];
