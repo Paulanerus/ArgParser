@@ -171,6 +171,8 @@ public:
         if (it == m_Options.end() || it->value.empty())
             return std::nullopt;
 
+        // TODO return default value
+
         // Doesn't look that good.. ~Paul
         if constexpr (std::is_convertible_v<std::string, T>)
             return static_cast<T>(it->value);
@@ -339,14 +341,11 @@ public:
             if (!c_has)
                 continue;
 
-            if (c_flag)
+            if (c_flag || i + 1 >= m_Args.size())
             {
                 indieces.insert(i);
                 continue;
             }
-
-            if (i + 1 >= m_Args.size())
-                continue;
 
             auto [n_has, _] = command.hasOption(m_Args[i + 1]);
 
@@ -365,6 +364,8 @@ public:
                                          { return indieces.contains(&arg - &m_Args[0]); });
 
         m_Args.erase(it.begin(), it.end());
+
+        std::cout << std::quoted(Join(m_Args)) << std::endl;
 
         command.execute(*this);
     }
