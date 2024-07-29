@@ -1,4 +1,14 @@
-# ArgParser Parser
+# ArgParser
+
+Simple argument parser mainly used for commands.
+
+## Todos
++ Global options
++ Remove '--' and '-' specifier
++ Debug logging
++ color support
++ Support custom types with get
++ 
 
 
 ## Support
