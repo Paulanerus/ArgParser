@@ -5,6 +5,8 @@
 
 int main(int argc, char *argv[])
 {
+    using namespace psap;
+
     ArgParser parser{"tram"};
 
     parser.command("help", "h")
