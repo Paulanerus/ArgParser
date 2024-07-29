@@ -1,7 +1,5 @@
 #pragma once
 
-#include "strings.hpp"
-
 #include <unordered_set>
 #include <string_view>
 #include <type_traits>
@@ -9,12 +7,60 @@
 #include <algorithm>
 #include <optional>
 #include <iostream>
+#include <concepts>
 #include <iomanip>
 #include <utility>
+#include <sstream>
 #include <vector>
 #include <ranges>
 #include <format>
 #include <string>
+
+inline std::string Join(const std::vector<std::string> &vec, const char *delimiter = ", ") noexcept
+{
+    std::ostringstream stream;
+
+    auto begin = vec.begin(), end = vec.end();
+
+    if (begin != end)
+    {
+        std::copy(begin, std::prev(end), std::ostream_iterator<std::string>(stream, delimiter));
+        begin = prev(end);
+    }
+
+    if (begin != end)
+        stream << *begin;
+
+    return stream.str();
+}
+
+inline std::size_t LevenshteinDistance(std::convertible_to<std::string_view> auto src, std::convertible_to<std::string_view> auto target) noexcept
+{
+    if (src == target)
+        return 0;
+
+    if (src.empty() || target.empty())
+        return std::max(src.length(), target.length());
+
+    std::vector<std::size_t> distance(target.length() + 1);
+
+    for (std::size_t i{}; i < src.length(); i++)
+    {
+        distance[0] = i + 1;
+
+        auto corner = i;
+
+        for (size_t j{}; j < target.length(); j++)
+        {
+            auto upper = distance[j + 1];
+
+            distance[j + 1] = src[i] == target[j] ? corner : std::min({upper, corner, distance[j]}) + 1;
+            corner = upper;
+        }
+    }
+
+    return distance[target.length()];
+}
 
 class ArgParser;
 
@@ -29,15 +75,6 @@ struct Option
     bool active;
 
     std::string value;
-
-    operator std::size_t() const noexcept
-    {
-        std::size_t size{};
-        for (auto &id : identifier)
-            size += id.length() + 2;
-
-        return size - 2;
-    }
 
     static Option Flag(std::initializer_list<std::string> &&identifier, std::string &&help_txt)
     {
@@ -57,6 +94,18 @@ struct Option
             .flag = false,
             .active = false,
             .value = std::move(val)};
+    }
+
+    friend ArgParser;
+
+private:
+    operator std::size_t() const noexcept
+    {
+        std::size_t size{};
+        for (auto &id : identifier)
+            size += id.length() + 2;
+
+        return size - 2;
     }
 };
 
@@ -94,40 +143,11 @@ public:
         m_Func(parser, *this);
     }
 
-    template <typename Arg>
-        requires(std::convertible_to<Arg, std::string_view>)
-    bool operator[](Arg option_id) const noexcept
+    bool operator[](std::convertible_to<std::string_view> auto option_id) const noexcept
     {
         return std::ranges::any_of(m_Options, [option_id](const Option &opt)
                                    { return opt.active && std::ranges::any_of(opt.identifier, [option_id](const std::string &id)
                                                                               { return option_id == id; }); });
-    }
-
-    std::string &operator[](const std::string &option) noexcept
-    {
-        static std::string fallback;
-
-        auto it = std::ranges::find_if(m_Options, [&option](const Option &opt)
-                                       { return std::ranges::any_of(opt.identifier, [&option](const std::string &id)
-                                                                    { return option == id; }); });
-        if (it == m_Options.end())
-            return fallback; // Should never happen...
-
-        return it->value;
-    }
-
-    std::pair<bool, bool> hasOption(const std::string &opt_str) noexcept
-    {
-        auto contains_option = [&opt_str](const auto &opt)
-        { return std::ranges::find(opt.identifier, opt_str) != opt.identifier.end(); };
-
-        if (auto opt = std::ranges::find_if(m_Options, contains_option); opt != m_Options.end())
-        {
-            opt->active = true;
-            return std::make_pair(true, opt->flag);
-        }
-
-        return std::make_pair(false, false);
     }
 
     std::string_view help() const noexcept
@@ -143,21 +163,6 @@ public:
     const std::vector<std::string> &identifier() const noexcept
     {
         return m_Identifier;
-    }
-
-    bool hasIdentifier(std::string_view identifier) const noexcept
-    {
-        return std::ranges::any_of(m_Identifier, [identifier](const auto &id)
-                                   { return id == identifier; });
-    }
-
-    operator std::size_t() const noexcept
-    {
-        std::size_t size{};
-        for (auto &id : m_Identifier)
-            size += id.length() + 2;
-
-        return size - 2;
     }
 
     template <typename T>
@@ -286,6 +291,8 @@ public:
             return std::nullopt;
     }
 
+    friend ArgParser;
+
 private:
     std::vector<std::string> m_Identifier;
 
@@ -294,6 +301,42 @@ private:
     std::vector<Option> m_Options;
 
     std::function<void(const ArgParser &parser, const Command &command)> m_Func;
+
+    std::string &operator[](const std::string &option) noexcept
+    {
+        static std::string fallback;
+
+        auto it = std::ranges::find_if(m_Options, [&option](const Option &opt)
+                                       { return std::ranges::any_of(opt.identifier, [&option](const std::string &id)
+                                                                    { return option == id; }); });
+        if (it == m_Options.end())
+            return fallback; // Should never happen...
+
+        return it->value;
+    }
+
+    std::pair<bool, bool> hasOption(const std::string &opt_str) noexcept
+    {
+        auto contains_option = [&opt_str](const auto &opt)
+        { return std::ranges::find(opt.identifier, opt_str) != opt.identifier.end(); };
+
+        if (auto opt = std::ranges::find_if(m_Options, contains_option); opt != m_Options.end())
+        {
+            opt->active = true;
+            return std::make_pair(true, opt->flag);
+        }
+
+        return std::make_pair(false, false);
+    }
+
+    operator std::size_t() const noexcept
+    {
+        std::size_t size{};
+        for (auto &id : m_Identifier)
+            size += id.length() + 2;
+
+        return size - 2;
+    }
 };
 
 class ArgParser
@@ -427,8 +470,9 @@ private:
 
     std::optional<Command> getCommandBy(std::string_view identifier) const noexcept
     {
-        auto has_identifier = [identifier](const Command &cmd)
-        { return cmd.hasIdentifier(identifier); };
+        auto has_identifier = [&](const Command &cmd)
+        { return std::ranges::any_of(cmd.identifier(), [identifier](const auto &id)
+                                     { return id == identifier; }); };
 
         if (auto cmd = std::ranges::find_if(m_Commands, has_identifier); cmd != m_Commands.end())
             return *cmd;
