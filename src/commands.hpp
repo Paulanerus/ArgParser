@@ -16,6 +16,9 @@ inline auto ADD_ACTION = []([[maybe_unused]] const ArgParser &parser, const Comm
 {
     auto branch_opt = cmd.get<std::string>("--branch");
 
+    if (cmd["--link"])
+        std::cout << std::quoted("--link") << " was specified\n";
+
     std::cout << std::format("Selected branch: {}", branch_opt.value()) << std::endl;
 };
 
