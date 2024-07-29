@@ -13,7 +13,7 @@ project "ArgParser"
 
     includedirs {"include/"}
 
-    files {"src/**.hpp", "src/**.cpp"}
+    files {"example/**.hpp", "example/**.cpp"}
 
     filter "configurations:Debug"
         filter "system:linux"
