@@ -9,7 +9,7 @@
 #include <vector>
 #include <string>
 
-std::string Join(const std::vector<std::string> &vec, const char *delimiter = ", ")
+inline std::string Join(const std::vector<std::string> &vec, const char *delimiter = ", ") noexcept
 {
     std::ostringstream stream;
 
@@ -27,7 +27,7 @@ std::string Join(const std::vector<std::string> &vec, const char *delimiter = ",
     return stream.str();
 }
 
-std::size_t LevenshteinDistance(std::convertible_to<std::string_view> auto src, std::convertible_to<std::string_view> auto target)
+inline std::size_t LevenshteinDistance(std::convertible_to<std::string_view> auto src, std::convertible_to<std::string_view> auto target) noexcept
 {
     if (src == target)
         return 0;

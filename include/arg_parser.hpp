@@ -2,6 +2,7 @@
 
 #include "strings.hpp"
 
+#include <unordered_set>
 #include <string_view>
 #include <type_traits>
 #include <functional>
@@ -14,8 +15,6 @@
 #include <ranges>
 #include <format>
 #include <string>
-
-#include <unordered_set>
 
 class ArgParser;
 
@@ -80,14 +79,14 @@ public:
         return *this;
     }
 
-    Command &action(std::function<void(const ArgParser &parser, const Command &command)> &&func)
+    Command &action(std::function<void(const ArgParser &parser, const Command &command)> &&func) noexcept
     {
         m_Func = std::move(func);
 
         return *this;
     }
 
-    void execute(const ArgParser &parser) noexcept
+    void execute(const ArgParser &parser)
     {
         if (m_Func == nullptr)
             return;
@@ -117,7 +116,7 @@ public:
         return it->value;
     }
 
-    std::pair<bool, bool> hasOption(const std::string &opt_str)
+    std::pair<bool, bool> hasOption(const std::string &opt_str) noexcept
     {
         auto contains_option = [&opt_str](const auto &opt)
         { return std::ranges::find(opt.identifier, opt_str) != opt.identifier.end(); };
@@ -365,8 +364,6 @@ public:
 
         m_Args.erase(it.begin(), it.end());
 
-        std::cout << std::quoted(Join(m_Args)) << std::endl;
-
         command.execute(*this);
     }
 
@@ -428,7 +425,7 @@ private:
 
     std::vector<std::string> m_Args;
 
-    std::optional<Command> getCommandBy(std::string_view identifier) const
+    std::optional<Command> getCommandBy(std::string_view identifier) const noexcept
     {
         auto has_identifier = [identifier](const Command &cmd)
         { return cmd.hasIdentifier(identifier); };
@@ -439,7 +436,7 @@ private:
         return std::nullopt;
     }
 
-    std::string getSimilar(std::string_view identifier) const
+    std::string getSimilar(std::string_view identifier) const noexcept
     {
         auto distance_compare = [identifier](const auto &lhs, const auto &rhs)
         { return LevenshteinDistance(identifier, lhs.identifier()[0]) < LevenshteinDistance(identifier, rhs.identifier()[0]); };
