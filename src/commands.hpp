@@ -12,9 +12,11 @@ inline auto NEW_ACTION = []([[maybe_unused]] const ArgParser &parser, [[maybe_un
     std::cout << "New" << std::endl;
 };
 
-inline auto ADD_ACTION = []([[maybe_unused]] const ArgParser &parser, [[maybe_unused]] const Command &cmd)
+inline auto ADD_ACTION = []([[maybe_unused]] const ArgParser &parser, const Command &cmd)
 {
-    std::cout << "Add" << std::endl;
+    auto branch_opt = cmd.get<std::string>("--branch");
+
+    std::cout << std::format("Selected branch: {}", branch_opt.value()) << std::endl;
 };
 
 inline auto REMOVE_ACTION = []([[maybe_unused]] const ArgParser &parser, [[maybe_unused]] const Command &cmd)

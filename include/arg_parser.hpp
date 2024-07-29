@@ -50,7 +50,7 @@ struct Option
             .value = {}};
     }
 
-    static Option Value(std::initializer_list<std::string> &&identifier, std::string &&help_txt, std::string &&val)
+    static Option Value(std::initializer_list<std::string> &&identifier, std::string &&help_txt, std::string &&val = "")
     {
         return Option{
             .identifier = std::move(identifier),
@@ -159,6 +159,130 @@ public:
             size += id.length() + 2;
 
         return size - 2;
+    }
+
+    template <typename T>
+    std::optional<T> get(std::string_view option) const
+    {
+        auto it = std::ranges::find_if(m_Options, [&option](const Option &opt)
+                                       { return std::ranges::any_of(opt.identifier, [&option](const std::string &id)
+                                                                    { return option == id; }); });
+
+        if (it == m_Options.end() || it->value.empty())
+            return std::nullopt;
+
+        // Doesn't look that good.. ~Paul
+        if constexpr (std::is_convertible_v<std::string, T>)
+            return static_cast<T>(it->value);
+        else if constexpr (std::is_convertible_v<std::wstring, T>)
+            return static_cast<T>(it->value);
+        else if constexpr (std::is_same_v<T, int8_t>)
+            return static_cast<int8_t>(it->value[0]);
+        else if constexpr (std::is_same_v<T, uint8_t>)
+            return static_cast<uint8_t>(it->value[0]);
+        else if constexpr (std::is_same_v<T, int16_t>)
+        {
+            try
+            {
+                return static_cast<int16_t>(std::stoi(it->value));
+            }
+            catch (...)
+            {
+                return std::nullopt;
+            }
+        }
+        else if constexpr (std::is_same_v<T, uint16_t>)
+        {
+            try
+            {
+                return static_cast<uint16_t>(std::stoul(it->value));
+            }
+            catch (...)
+            {
+                return std::nullopt;
+            }
+        }
+        else if constexpr (std::is_same_v<T, int32_t>)
+        {
+            try
+            {
+                return std::stoi(it->value);
+            }
+            catch (...)
+            {
+                return std::nullopt;
+            }
+        }
+        else if constexpr (std::is_same_v<T, uint32_t>)
+        {
+            try
+            {
+                return static_cast<uint32_t>(std::stoul(it->value));
+            }
+            catch (...)
+            {
+                return std::nullopt;
+            }
+        }
+        else if constexpr (std::is_same_v<T, int64_t>)
+        {
+            try
+            {
+                return std::stol(it->value);
+            }
+            catch (...)
+            {
+                return std::nullopt;
+            }
+        }
+        else if constexpr (std::is_same_v<T, uint64_t>)
+        {
+            try
+            {
+                return std::stoul(it->value);
+            }
+            catch (...)
+            {
+                return std::nullopt;
+            }
+        }
+        else if constexpr (std::is_same_v<T, float>)
+        {
+            try
+            {
+                return std::stof(it->value);
+            }
+            catch (...)
+            {
+                return std::nullopt;
+            }
+        }
+        else if constexpr (std::is_same_v<T, double>)
+        {
+            try
+            {
+                return std::stod(it->value);
+            }
+            catch (...)
+            {
+                return std::nullopt;
+            }
+        }
+        else if constexpr (std::is_same_v<T, long double>)
+        {
+            try
+            {
+                return std::stold(it->value);
+            }
+            catch (...)
+            {
+                return std::nullopt;
+            }
+        }
+        // else if constexpr (std::is_constructible_v<T, std::string>)
+        //     return T(it->value);
+        else
+            return std::nullopt;
     }
 
 private:
