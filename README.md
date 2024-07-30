@@ -73,7 +73,6 @@ ArgParser has no other dependencies.
 + Global options
 + Remove '--' and '-' specifier
 + Debug logging
-+ color support
 + Support custom types with get
 
 ## Support
