@@ -63,7 +63,7 @@ Example 2:
 
 ## Documentation
 
-TODO
+Documentation can be found in the [wiki](https://github.com/Paulanerus/ArgParser/wiki) pages.
 
 ## Dependencies
 
