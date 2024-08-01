@@ -413,34 +413,11 @@ namespace psap // Paul's Simple Argument Parser
             return *this;
         }
 
-        void execute(const ArgParser &parser)
-        {
-            if (m_Func == nullptr)
-                return;
-
-            m_Func(parser, *this);
-        }
-
         bool operator[](std::convertible_to<std::string_view> auto option_id) const noexcept
         {
             return std::ranges::any_of(m_Options, [option_id](const Option &opt)
                                        { return opt.active && std::ranges::any_of(opt.identifier, [option_id](const std::string &id)
                                                                                   { return option_id == id; }); });
-        }
-
-        std::string_view help() const noexcept
-        {
-            return m_Help;
-        }
-
-        const std::vector<Option> &options() const noexcept
-        {
-            return m_Options;
-        }
-
-        const std::vector<std::string> &identifier() const noexcept
-        {
-            return m_Identifier;
         }
 
         template <typename T>
@@ -452,8 +429,6 @@ namespace psap // Paul's Simple Argument Parser
 
             if (it == m_Options.end() || it->value.empty())
                 return std::nullopt;
-
-            // TODO return default value
 
             // Doesn't look that good.. ~Paul
             if constexpr (std::is_convertible_v<std::string, T>)
@@ -580,6 +555,14 @@ namespace psap // Paul's Simple Argument Parser
 
         std::function<void(const ArgParser &parser, const Command &command)> m_Func;
 
+        void execute(const ArgParser &parser)
+        {
+            if (m_Func == nullptr)
+                return;
+
+            m_Func(parser, *this);
+        }
+
         std::string &operator[](const std::string &option) noexcept
         {
             static std::string fallback;
@@ -651,7 +634,12 @@ namespace psap // Paul's Simple Argument Parser
             if (!command_opt.has_value())
             {
                 std::cout << std::format("Unknown command '{}'\n", color::light_red(m_Args[0]));
-                std::cout << std::format("Did you mean: '{}'?", color::green(getSimilar(m_Args[0]))) << std::endl;
+
+                auto similar = getSimilar(m_Args[0]);
+
+                if (!similar.empty())
+                    std::cout << std::format("Did you mean: '{}'?", color::green(similar)) << std::endl;
+
                 return;
             }
 
@@ -700,8 +688,8 @@ namespace psap // Paul's Simple Argument Parser
 
                 std::cout << color::cyan("Commands:\n");
 
-                for (auto &cmd : m_Commands)
-                    std::cout << "    " << Join(cmd.identifier()) << std::setw(27 - (std::size_t)cmd) << " " << cmd.help() << "\n";
+                for (const auto &cmd : m_Commands)
+                    std::cout << "    " << Join(cmd.m_Identifier) << std::setw(27 - (std::size_t)cmd) << " " << cmd.m_Help << "\n";
 
                 std::cout << "\n";
 
@@ -737,14 +725,14 @@ namespace psap // Paul's Simple Argument Parser
                 << color::yellow("Usage: ")
                 << m_AppName
                 << " "
-                << color::cyan(command.identifier()[0])
-                << (command.options().size() > 0 ? color::green(" [Options]") : "")
+                << color::cyan(command.m_Identifier[0])
+                << (command.m_Options.size() > 0 ? color::green(" [Options]") : "")
                 << color::light_red(" [Args]")
                 << "\n\n";
 
             std::cout << color::green("Options:\n");
 
-            for (auto &arg : command.options())
+            for (const auto &arg : command.m_Options)
                 std::cout
                     << "    "
                     << Join(arg.identifier)
@@ -779,7 +767,7 @@ namespace psap // Paul's Simple Argument Parser
         std::optional<Command> getCommandBy(std::string_view identifier) const noexcept
         {
             auto has_identifier = [&](const Command &cmd)
-            { return std::ranges::any_of(cmd.identifier(), [identifier](const auto &id)
+            { return std::ranges::any_of(cmd.m_Identifier, [identifier](const auto &id)
                                          { return id == identifier; }); };
 
             if (auto cmd = std::ranges::find_if(m_Commands, has_identifier); cmd != m_Commands.end())
@@ -791,12 +779,12 @@ namespace psap // Paul's Simple Argument Parser
         std::string getSimilar(std::string_view identifier) const noexcept
         {
             auto distance_compare = [identifier](const auto &lhs, const auto &rhs)
-            { return LevenshteinDistance(identifier, lhs.identifier()[0]) < LevenshteinDistance(identifier, rhs.identifier()[0]); };
+            { return LevenshteinDistance(identifier, lhs.m_Identifier[0]) < LevenshteinDistance(identifier, rhs.m_Identifier[0]); };
 
             if (auto min_distance = std::ranges::min_element(m_Commands, distance_compare); min_distance != m_Commands.end())
-                return min_distance->identifier()[0];
+                return min_distance->m_Identifier[0];
 
-            return "help";
+            return "";
         }
     };
 }
