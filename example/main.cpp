@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
 
     parser.command("help", "h")
         .help("Shows help.")
-        .fallback(true)
+        .fallback()
         .action(HELP_ACTION);
 
     parser.command("new", "n", "create", "c")

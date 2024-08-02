@@ -416,9 +416,9 @@ namespace psap // Paul's Simple Argument Parser
             return *this;
         }
 
-        Command &fallback(bool fallback)
+        Command &fallback()
         {
-            m_Fallback = fallback;
+            m_Fallback = true;
             return *this;
         }
 
