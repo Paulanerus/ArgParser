@@ -297,50 +297,53 @@ namespace psap // Paul's Simple Argument Parser
         }
     }
 
-    inline std::string Join(const std::vector<std::string> &vec, const char *delimiter = ", ") noexcept
+    namespace string
     {
-        std::ostringstream stream;
-
-        auto begin = vec.begin(), end = vec.end();
-
-        if (begin != end)
+        inline std::string Join(const std::vector<std::string> &vec, const char *delimiter = ", ") noexcept
         {
-            std::copy(begin, std::prev(end), std::ostream_iterator<std::string>(stream, delimiter));
-            begin = prev(end);
-        }
+            std::ostringstream stream;
 
-        if (begin != end)
-            stream << *begin;
+            auto begin = vec.begin(), end = vec.end();
 
-        return stream.str();
-    }
-
-    inline std::size_t LevenshteinDistance(std::convertible_to<std::string_view> auto src, std::convertible_to<std::string_view> auto target) noexcept
-    {
-        if (src == target)
-            return 0;
-
-        if (src.empty() || target.empty())
-            return std::max(src.length(), target.length());
-
-        std::vector<std::size_t> distance(target.length() + 1);
-
-        for (std::size_t i{}; i < src.length(); i++)
-        {
-            distance[0] = i + 1;
-
-            auto corner = i;
-
-            for (size_t j{}; j < target.length(); j++)
+            if (begin != end)
             {
-                auto upper = distance[j + 1];
-
-                distance[j + 1] = src[i] == target[j] ? corner : std::min({upper, corner, distance[j]}) + 1;
-                corner = upper;
+                std::copy(begin, std::prev(end), std::ostream_iterator<std::string>(stream, delimiter));
+                begin = prev(end);
             }
+
+            if (begin != end)
+                stream << *begin;
+
+            return stream.str();
         }
 
-        return distance[target.length()];
+        inline std::size_t LevenshteinDistance(std::convertible_to<std::string_view> auto src, std::convertible_to<std::string_view> auto target) noexcept
+        {
+            if (src == target)
+                return 0;
+
+            if (src.empty() || target.empty())
+                return std::max(src.length(), target.length());
+
+            std::vector<std::size_t> distance(target.length() + 1);
+
+            for (std::size_t i{}; i < src.length(); i++)
+            {
+                distance[0] = i + 1;
+
+                auto corner = i;
+
+                for (size_t j{}; j < target.length(); j++)
+                {
+                    auto upper = distance[j + 1];
+
+                    distance[j + 1] = src[i] == target[j] ? corner : std::min({upper, corner, distance[j]}) + 1;
+                    corner = upper;
+                }
+            }
+
+            return distance[target.length()];
+        }
     }
 
     class ArgParser;
@@ -711,14 +714,14 @@ namespace psap // Paul's Simple Argument Parser
 
                 std::cout << color::green("Options:\n");
                 for (const auto &opt : m_Options)
-                    std::cout << "    " << Join(opt.identifier) << std::setw(27 - (std::size_t)opt) << " " << opt.help << "\n";
+                    std::cout << "    " << string::Join(opt.identifier) << std::setw(27 - (std::size_t)opt) << " " << opt.help << "\n";
 
                 std::cout << "\n";
 
                 std::cout << color::cyan("Commands:\n");
 
                 for (const auto &cmd : m_Commands)
-                    std::cout << "    " << Join(cmd.m_Identifier) << std::setw(27 - (std::size_t)cmd) << " " << cmd.m_Help << "\n";
+                    std::cout << "    " << string::Join(cmd.m_Identifier) << std::setw(27 - (std::size_t)cmd) << " " << cmd.m_Help << "\n";
 
                 std::cout << "\n";
 
@@ -764,7 +767,7 @@ namespace psap // Paul's Simple Argument Parser
             for (const auto &arg : command.m_Options)
                 std::cout
                     << "    "
-                    << Join(arg.identifier)
+                    << string::Join(arg.identifier)
                     << (arg.flag ? "" : " <value> ")
                     << std::setw(17 - (std::size_t)arg)
                     << " "
@@ -985,7 +988,7 @@ namespace psap // Paul's Simple Argument Parser
         std::string getSimilar(std::string_view identifier) const noexcept
         {
             auto distance_compare = [identifier](const auto &lhs, const auto &rhs)
-            { return LevenshteinDistance(identifier, lhs.m_Identifier[0]) < LevenshteinDistance(identifier, rhs.m_Identifier[0]); };
+            { return string::LevenshteinDistance(identifier, lhs.m_Identifier[0]) < string::LevenshteinDistance(identifier, rhs.m_Identifier[0]); };
 
             if (auto min_distance = std::ranges::min_element(m_Commands, distance_compare); min_distance != m_Commands.end())
                 return min_distance->m_Identifier[0];
