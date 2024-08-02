@@ -576,20 +576,6 @@ namespace psap // Paul's Simple Argument Parser
             return it->value;
         }
 
-        std::pair<bool, bool> hasOption(const std::string &opt_str) noexcept
-        {
-            auto contains_option = [&opt_str](const auto &opt)
-            { return std::ranges::find(opt.identifier, opt_str) != opt.identifier.end(); };
-
-            if (auto opt = std::ranges::find_if(m_Options, contains_option); opt != m_Options.end())
-            {
-                opt->active = true;
-                return std::make_pair(true, opt->flag);
-            }
-
-            return std::make_pair(false, false);
-        }
-
         operator std::size_t() const noexcept
         {
             std::size_t size{};
@@ -618,6 +604,12 @@ namespace psap // Paul's Simple Argument Parser
             return m_Commands.emplace_back(std::move(identifier));
         }
 
+        ArgParser &option(Option &&option)
+        {
+            m_Options.emplace_back(std::move(option));
+            return *this;
+        }
+
         void parse(char *argv[], int argc, std::size_t start = 1)
         {
             if (argc - start == 0)
@@ -625,17 +617,48 @@ namespace psap // Paul's Simple Argument Parser
 
             m_Args.assign(argv + start, argv + argc);
 
-            std::for_each(m_Args.begin(), m_Args.end(), [](std::string &arg)
-                          { std::transform(arg.begin(), arg.end(), arg.begin(), [](auto c)
-                                           { return std::tolower(c); }); });
+            std::ranges::for_each(m_Args, [](std::string &arg)
+                                  { std::transform(arg.begin(), arg.end(), arg.begin(), [](auto c)
+                                                   { return std::tolower(c); }); });
 
-            auto command_opt = getCommandBy(m_Args[0]);
+            std::size_t command_idx = std::numeric_limits<std::size_t>::max();
+            std::unordered_set<std::size_t> indieces;
+
+            for (std::size_t i{}; i < m_Args.size(); i++)
+            {
+                if (isCommand(m_Args[i]))
+                {
+                    indieces.insert(i);
+                    command_idx = i;
+                    break;
+                }
+
+                auto [has, flag] = hasOption(m_Options, m_Args[i]);
+
+                indieces.insert(i);
+
+                if (!has || flag || i + 1 >= m_Args.size())
+                    continue;
+
+                auto [n_has, _] = hasOption(m_Options, m_Args[i + 1]);
+
+                if (!n_has)
+                    updateValue(m_Args[i], m_Args[i + 1]);
+
+                indieces.insert(i + 1);
+                i++;
+            }
+
+            if (command_idx == std::numeric_limits<std::size_t>::max())
+                return;
+
+            auto command_opt = getCommandBy(m_Args[command_idx]);
 
             if (!command_opt.has_value())
             {
-                std::cout << std::format("Unknown command '{}'\n", color::light_red(m_Args[0]));
+                std::cout << std::format("Unknown command '{}'\n", color::light_red(m_Args[command_idx]));
 
-                auto similar = getSimilar(m_Args[0]);
+                auto similar = getSimilar(m_Args[command_idx]);
 
                 if (!similar.empty())
                     std::cout << std::format("Did you mean: '{}'?", color::green(similar)) << std::endl;
@@ -645,10 +668,9 @@ namespace psap // Paul's Simple Argument Parser
 
             auto command = command_opt.value();
 
-            std::unordered_set<std::size_t> indieces{0};
-            for (std::size_t i{}; i < m_Args.size(); i++)
+            for (std::size_t i = command_idx + 1; i < m_Args.size(); i++)
             {
-                auto [c_has, c_flag] = command.hasOption(m_Args[i]);
+                auto [c_has, c_flag] = hasOption(command.m_Options, m_Args[i]);
 
                 if (!c_has)
                     continue;
@@ -659,17 +681,13 @@ namespace psap // Paul's Simple Argument Parser
                     continue;
                 }
 
-                auto [n_has, _] = command.hasOption(m_Args[i + 1]);
+                auto [n_has, _] = hasOption(command.m_Options, m_Args[i + 1]);
 
-                if (n_has)
-                {
-                    indieces.insert(i);
-                    continue;
-                }
+                if (!n_has)
+                    command[m_Args[i]] = m_Args[i + 1];
 
-                command[m_Args[i]] = m_Args[i + 1];
-
-                indieces.insert({i, i + 1});
+                indieces.insert({i, i + (n_has ? 0 : 1)});
+                i++;
             }
 
             auto it = std::ranges::remove_if(m_Args, [&](const std::string &arg)
@@ -684,7 +702,13 @@ namespace psap // Paul's Simple Argument Parser
         {
             if (identifier.empty())
             {
-                std::cout << color::yellow("Usage: ") << m_AppName << color::cyan(" [Command]") << color::green(" [Options]") << "\n\n";
+                std::cout << color::yellow("Usage: ") << m_AppName << color::green(" [Options]") << color::cyan(" [Command]") << "\n\n";
+
+                std::cout << color::green("Options:\n");
+                for (const auto &opt : m_Options)
+                    std::cout << "    " << Join(opt.identifier) << std::setw(27 - (std::size_t)opt) << " " << opt.help << "\n";
+
+                std::cout << "\n";
 
                 std::cout << color::cyan("Commands:\n");
 
@@ -757,12 +781,174 @@ namespace psap // Paul's Simple Argument Parser
             return "";
         }
 
+        bool operator[](std::convertible_to<std::string_view> auto option_id) const noexcept
+        {
+            return std::ranges::any_of(m_Options, [option_id](const Option &opt)
+                                       { return opt.active && std::ranges::any_of(opt.identifier, [option_id](const std::string &id)
+                                                                                  { return option_id == id; }); });
+        }
+
+        template <typename T>
+        std::optional<T> get(std::string_view option) const
+        {
+            auto it = std::ranges::find_if(m_Options, [&option](const Option &opt)
+                                           { return std::ranges::any_of(opt.identifier, [&option](const std::string &id)
+                                                                        { return option == id; }); });
+
+            if (it == m_Options.end() || it->value.empty())
+                return std::nullopt;
+
+            if constexpr (std::is_convertible_v<std::string, T>)
+                return static_cast<T>(it->value);
+            else if constexpr (std::is_convertible_v<std::wstring, T>)
+                return static_cast<T>(it->value);
+            else if constexpr (std::is_same_v<T, int8_t>)
+                return static_cast<int8_t>(it->value[0]);
+            else if constexpr (std::is_same_v<T, uint8_t>)
+                return static_cast<uint8_t>(it->value[0]);
+            else if constexpr (std::is_same_v<T, int16_t>)
+            {
+                try
+                {
+                    return static_cast<int16_t>(std::stoi(it->value));
+                }
+                catch (...)
+                {
+                    return std::nullopt;
+                }
+            }
+            else if constexpr (std::is_same_v<T, uint16_t>)
+            {
+                try
+                {
+                    return static_cast<uint16_t>(std::stoul(it->value));
+                }
+                catch (...)
+                {
+                    return std::nullopt;
+                }
+            }
+            else if constexpr (std::is_same_v<T, int32_t>)
+            {
+                try
+                {
+                    return std::stoi(it->value);
+                }
+                catch (...)
+                {
+                    return std::nullopt;
+                }
+            }
+            else if constexpr (std::is_same_v<T, uint32_t>)
+            {
+                try
+                {
+                    return static_cast<uint32_t>(std::stoul(it->value));
+                }
+                catch (...)
+                {
+                    return std::nullopt;
+                }
+            }
+            else if constexpr (std::is_same_v<T, int64_t>)
+            {
+                try
+                {
+                    return std::stol(it->value);
+                }
+                catch (...)
+                {
+                    return std::nullopt;
+                }
+            }
+            else if constexpr (std::is_same_v<T, uint64_t>)
+            {
+                try
+                {
+                    return std::stoul(it->value);
+                }
+                catch (...)
+                {
+                    return std::nullopt;
+                }
+            }
+            else if constexpr (std::is_same_v<T, float>)
+            {
+                try
+                {
+                    return std::stof(it->value);
+                }
+                catch (...)
+                {
+                    return std::nullopt;
+                }
+            }
+            else if constexpr (std::is_same_v<T, double>)
+            {
+                try
+                {
+                    return std::stod(it->value);
+                }
+                catch (...)
+                {
+                    return std::nullopt;
+                }
+            }
+            else if constexpr (std::is_same_v<T, long double>)
+            {
+                try
+                {
+                    return std::stold(it->value);
+                }
+                catch (...)
+                {
+                    return std::nullopt;
+                }
+            }
+            else
+                return std::nullopt;
+        }
+
     private:
         const std::string m_AppName;
+
+        std::vector<Option> m_Options;
 
         std::vector<Command> m_Commands;
 
         std::vector<std::string> m_Args;
+
+        inline void updateValue(std::string_view option, const std::string &value) noexcept
+        {
+            auto it = std::ranges::find_if(m_Options, [&option](const Option &opt)
+                                           { return std::ranges::any_of(opt.identifier, [&option](const std::string &id)
+                                                                        { return option == id; }); });
+            if (it == m_Options.end())
+                return;
+
+            it->value = value;
+        }
+
+        std::pair<bool, bool> hasOption(std::span<Option> options, std::string_view option)
+        {
+            auto contains_option = [&option](const Option &opt)
+            { return std::ranges::find(opt.identifier, option) != opt.identifier.end(); };
+
+            if (auto opt = std::ranges::find_if(options, contains_option); opt != options.end())
+            {
+                opt->active = true;
+                return std::make_pair(true, opt->flag);
+            }
+
+            return std::make_pair(false, false);
+        }
+
+        bool isCommand(std::string_view identifier) const noexcept
+        {
+            return std::ranges::any_of(m_Commands, [&identifier](const Command &cmd)
+                                       { return std::ranges::any_of(cmd.m_Identifier, [&identifier](const auto &id)
+                                                                    { return identifier == id; }); });
+        }
 
         std::optional<Command> getCommandBy(std::string_view identifier) const noexcept
         {

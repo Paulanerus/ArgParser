@@ -9,6 +9,9 @@ int main(int argc, char *argv[])
 
     ArgParser parser{"tram"};
 
+    parser.option(Option::Flag({"--test", "-t"}, "Global test flag"));
+    parser.option(Option::Value({"--value", "-v"}, "Global test value"));
+
     parser.command("help", "h")
         .help("Shows help.")
         .action(HELP_ACTION);
