@@ -416,6 +416,12 @@ namespace psap // Paul's Simple Argument Parser
             return *this;
         }
 
+        Command &fallback(bool fallback)
+        {
+            m_Fallback = fallback;
+            return *this;
+        }
+
         bool has(std::string_view option_id) const noexcept
         {
             return std::ranges::any_of(m_Options, [option_id](const Option &opt)
@@ -559,6 +565,8 @@ namespace psap // Paul's Simple Argument Parser
 
         std::string m_Help;
 
+        bool m_Fallback;
+
         std::vector<Option> m_Options;
 
         std::function<void(const ArgParser &parser, const Command &command)> m_Func;
@@ -621,7 +629,14 @@ namespace psap // Paul's Simple Argument Parser
         void parse(char *argv[], int argc, std::size_t start = 1)
         {
             if (argc - start == 0)
+            {
+                auto it = std::ranges::find(m_Commands, true, &Command::m_Fallback);
+
+                if(it != m_Commands.end())
+                    it->execute(*this);
+
                 return;
+            }
 
             m_Args.assign(argv + start, argv + argc);
 
