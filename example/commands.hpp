@@ -34,6 +34,10 @@ inline auto BUILD_ACTION = []([[maybe_unused]] const auto &_, [[maybe_unused]] c
 
 inline auto RUN_ACTION = [](const psap::ArgParser &parser, const psap::Command &cmd)
 {
+    auto val = parser.get<int>("--value").value_or(32);
+
+    std::cout << "Global value: " << val << std::endl;
+
     if (parser["-t"])
         std::cout << "Global test was set" << std::endl;
 

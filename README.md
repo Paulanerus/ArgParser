@@ -70,7 +70,6 @@ Documentation can be found in the [wiki](https://github.com/Paulanerus/ArgParser
 ArgParser has no other dependencies.
 
 ## Todos
-+ Global options
 + Remove '--' and '-' specifier
 + Debug logging
 + Support custom types with get
