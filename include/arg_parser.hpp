@@ -413,11 +413,16 @@ namespace psap // Paul's Simple Argument Parser
             return *this;
         }
 
-        bool operator[](std::convertible_to<std::string_view> auto option_id) const noexcept
+        bool has(std::string_view option_id) const noexcept
         {
             return std::ranges::any_of(m_Options, [option_id](const Option &opt)
                                        { return opt.active && std::ranges::any_of(opt.identifier, [option_id](const std::string &id)
                                                                                   { return option_id == id; }); });
+        }
+
+        bool operator[](std::convertible_to<std::string_view> auto option_id) const noexcept
+        {
+            return has(option_id);
         }
 
         template <typename T>
@@ -698,7 +703,7 @@ namespace psap // Paul's Simple Argument Parser
             command.execute(*this);
         }
 
-        void operator()(std::string_view identifier) const
+        void print(std::string_view identifier) const noexcept
         {
             if (identifier.empty())
             {
@@ -768,12 +773,17 @@ namespace psap // Paul's Simple Argument Parser
                     << std::endl;
         }
 
+        void operator()(std::string_view identifier) const noexcept
+        {
+            print(identifier);
+        }
+
         const std::vector<std::string> &args() const noexcept
         {
             return m_Args;
         }
 
-        std::string operator[](std::size_t idx) const noexcept
+        std::string argAt(std::size_t idx) const noexcept
         {
             if (idx < m_Args.size())
                 return m_Args[idx];
@@ -781,11 +791,21 @@ namespace psap // Paul's Simple Argument Parser
             return "";
         }
 
-        bool operator[](std::convertible_to<std::string_view> auto option_id) const noexcept
+        std::string operator[](std::size_t idx) const noexcept
+        {
+            return argAt(idx);
+        }
+
+        bool has(std::string_view option_id) const noexcept
         {
             return std::ranges::any_of(m_Options, [option_id](const Option &opt)
                                        { return opt.active && std::ranges::any_of(opt.identifier, [option_id](const std::string &id)
                                                                                   { return option_id == id; }); });
+        }
+
+        bool operator[](std::convertible_to<std::string_view> auto option_id) const noexcept
+        {
+            return has(option_id);
         }
 
         template <typename T>

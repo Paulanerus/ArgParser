@@ -38,7 +38,7 @@ inline auto RUN_ACTION = [](const psap::ArgParser &parser, const psap::Command &
 
     std::cout << "Global value: " << val << std::endl;
 
-    if (parser["-t"])
+    if (parser.has("-t"))
         std::cout << "Global test was set" << std::endl;
 
     if (cmd["--debug"])
