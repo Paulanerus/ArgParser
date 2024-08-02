@@ -632,7 +632,7 @@ namespace psap // Paul's Simple Argument Parser
             {
                 auto it = std::ranges::find(m_Commands, true, &Command::m_Fallback);
 
-                if(it != m_Commands.end())
+                if (it != m_Commands.end())
                     it->execute(*this);
 
                 return;
@@ -644,7 +644,7 @@ namespace psap // Paul's Simple Argument Parser
                                   { std::transform(arg.begin(), arg.end(), arg.begin(), [](auto c)
                                                    { return std::tolower(c); }); });
 
-            std::size_t command_idx = std::numeric_limits<std::size_t>::max();
+            std::size_t command_idx{};
             std::unordered_set<std::size_t> indieces;
 
             for (std::size_t i{}; i < m_Args.size(); i++)
@@ -660,7 +660,13 @@ namespace psap // Paul's Simple Argument Parser
 
                 indieces.insert(i);
 
-                if (!has || flag || i + 1 >= m_Args.size())
+                if (!has)
+                {
+                    command_idx = i;
+                    break;
+                }
+
+                if (flag || i + 1 >= m_Args.size())
                     continue;
 
                 auto [n_has, _] = hasOption(m_Options, m_Args[i + 1]);
@@ -671,9 +677,6 @@ namespace psap // Paul's Simple Argument Parser
                 indieces.insert(i + 1);
                 i++;
             }
-
-            if (command_idx == std::numeric_limits<std::size_t>::max())
-                return;
 
             auto command_opt = getCommandBy(m_Args[command_idx]);
 
