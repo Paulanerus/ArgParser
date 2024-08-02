@@ -705,7 +705,8 @@ namespace psap // Paul's Simple Argument Parser
                 std::cout << color::yellow("Usage: ") << m_AppName << color::green(" [Options]") << color::cyan(" [Command]") << "\n\n";
 
                 std::cout << color::green("Options:\n");
-                std::cout << "TODO" << std::endl;
+                for (const auto &opt : m_Options)
+                    std::cout << "    " << Join(opt.identifier) << std::setw(27 - (std::size_t)opt) << " " << opt.help << "\n";
 
                 std::cout << "\n";
 
