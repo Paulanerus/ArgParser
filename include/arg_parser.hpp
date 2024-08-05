@@ -346,6 +346,22 @@ namespace psap // Paul's Simple Argument Parser
         }
     }
 
+    namespace internal
+    {
+        template <typename T>
+        auto try_catch(T &&t) noexcept -> std::optional<decltype(t())>
+        {
+            try
+            {
+                return t();
+            }
+            catch ([[maybe_unused]] const std::exception &)
+            {
+                return std::nullopt;
+            }
+        }
+    }
+
     class ArgParser;
 
     struct Option
@@ -454,104 +470,32 @@ namespace psap // Paul's Simple Argument Parser
             else if constexpr (std::is_same_v<T, uint8_t>)
                 return static_cast<uint8_t>(it->value[0]);
             else if constexpr (std::is_same_v<T, int16_t>)
-            {
-                try
-                {
-                    return static_cast<int16_t>(std::stoi(it->value));
-                }
-                catch (...)
-                {
-                    return std::nullopt;
-                }
-            }
+                return internal::try_catch([&it]
+                                           { return static_cast<int16_t>(std::stoi(it->value)); });
             else if constexpr (std::is_same_v<T, uint16_t>)
-            {
-                try
-                {
-                    return static_cast<uint16_t>(std::stoul(it->value));
-                }
-                catch (...)
-                {
-                    return std::nullopt;
-                }
-            }
+                return internal::try_catch([&it]
+                                           { return static_cast<uint16_t>(std::stoul(it->value)); });
             else if constexpr (std::is_same_v<T, int32_t>)
-            {
-                try
-                {
-                    return std::stoi(it->value);
-                }
-                catch (...)
-                {
-                    return std::nullopt;
-                }
-            }
+                return internal::try_catch([&it]
+                                           { return std::stoi(it->value); });
             else if constexpr (std::is_same_v<T, uint32_t>)
-            {
-                try
-                {
-                    return static_cast<uint32_t>(std::stoul(it->value));
-                }
-                catch (...)
-                {
-                    return std::nullopt;
-                }
-            }
+                return internal::try_catch([&it]
+                                           { return static_cast<uint32_t>(std::stoul(it->value)); });
             else if constexpr (std::is_same_v<T, int64_t>)
-            {
-                try
-                {
-                    return std::stol(it->value);
-                }
-                catch (...)
-                {
-                    return std::nullopt;
-                }
-            }
+                return internal::try_catch([&it]
+                                           { return std::stol(it->value); });
             else if constexpr (std::is_same_v<T, uint64_t>)
-            {
-                try
-                {
-                    return std::stoul(it->value);
-                }
-                catch (...)
-                {
-                    return std::nullopt;
-                }
-            }
+                return internal::try_catch([&it]
+                                           { return std::stoul(it->value); });
             else if constexpr (std::is_same_v<T, float>)
-            {
-                try
-                {
-                    return std::stof(it->value);
-                }
-                catch (...)
-                {
-                    return std::nullopt;
-                }
-            }
+                return internal::try_catch([&it]
+                                           { return std::stof(it->value); });
             else if constexpr (std::is_same_v<T, double>)
-            {
-                try
-                {
-                    return std::stod(it->value);
-                }
-                catch (...)
-                {
-                    return std::nullopt;
-                }
-            }
+                return internal::try_catch([&it]
+                                           { return std::stod(it->value); });
             else if constexpr (std::is_same_v<T, long double>)
-            {
-                try
-                {
-                    return std::stold(it->value);
-                }
-                catch (...)
-                {
-                    return std::nullopt;
-                }
-            }
+                return internal::try_catch([&it]
+                                           { return std::stold(it->value); });
             // else if constexpr (std::is_constructible_v<T, std::string>)
             //     return T(it->value);
             else
@@ -848,104 +792,32 @@ namespace psap // Paul's Simple Argument Parser
             else if constexpr (std::is_same_v<T, uint8_t>)
                 return static_cast<uint8_t>(it->value[0]);
             else if constexpr (std::is_same_v<T, int16_t>)
-            {
-                try
-                {
-                    return static_cast<int16_t>(std::stoi(it->value));
-                }
-                catch (...)
-                {
-                    return std::nullopt;
-                }
-            }
+                return internal::try_catch([&it]
+                                           { return static_cast<int16_t>(std::stoi(it->value)); });
             else if constexpr (std::is_same_v<T, uint16_t>)
-            {
-                try
-                {
-                    return static_cast<uint16_t>(std::stoul(it->value));
-                }
-                catch (...)
-                {
-                    return std::nullopt;
-                }
-            }
+                return internal::try_catch([&it]
+                                           { return static_cast<uint16_t>(std::stoul(it->value)); });
             else if constexpr (std::is_same_v<T, int32_t>)
-            {
-                try
-                {
-                    return std::stoi(it->value);
-                }
-                catch (...)
-                {
-                    return std::nullopt;
-                }
-            }
+                return internal::try_catch([&it]
+                                           { return std::stoi(it->value); });
             else if constexpr (std::is_same_v<T, uint32_t>)
-            {
-                try
-                {
-                    return static_cast<uint32_t>(std::stoul(it->value));
-                }
-                catch (...)
-                {
-                    return std::nullopt;
-                }
-            }
+                return internal::try_catch([&it]
+                                           { return static_cast<uint32_t>(std::stoul(it->value)); });
             else if constexpr (std::is_same_v<T, int64_t>)
-            {
-                try
-                {
-                    return std::stol(it->value);
-                }
-                catch (...)
-                {
-                    return std::nullopt;
-                }
-            }
+                return internal::try_catch([&it]
+                                           { return std::stol(it->value); });
             else if constexpr (std::is_same_v<T, uint64_t>)
-            {
-                try
-                {
-                    return std::stoul(it->value);
-                }
-                catch (...)
-                {
-                    return std::nullopt;
-                }
-            }
+                return internal::try_catch([&it]
+                                           { return std::stoul(it->value); });
             else if constexpr (std::is_same_v<T, float>)
-            {
-                try
-                {
-                    return std::stof(it->value);
-                }
-                catch (...)
-                {
-                    return std::nullopt;
-                }
-            }
+                return internal::try_catch([&it]
+                                           { return std::stof(it->value); });
             else if constexpr (std::is_same_v<T, double>)
-            {
-                try
-                {
-                    return std::stod(it->value);
-                }
-                catch (...)
-                {
-                    return std::nullopt;
-                }
-            }
+                return internal::try_catch([&it]
+                                           { return std::stod(it->value); });
             else if constexpr (std::is_same_v<T, long double>)
-            {
-                try
-                {
-                    return std::stold(it->value);
-                }
-                catch (...)
-                {
-                    return std::nullopt;
-                }
-            }
+                return internal::try_catch([&it]
+                                           { return std::stold(it->value); });
             else
                 return std::nullopt;
         }
