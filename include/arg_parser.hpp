@@ -877,13 +877,25 @@ namespace psap // Paul's Simple Argument Parser
 
         std::string getSimilar(std::string_view identifier) const noexcept
         {
-            auto distance_compare = [identifier](const auto &lhs, const auto &rhs)
-            { return string::LevenshteinDistance(identifier, lhs.m_Identifier[0]) < string::LevenshteinDistance(identifier, rhs.m_Identifier[0]); };
+            std::size_t length = std::numeric_limits<std::size_t>::max();
 
-            if (auto min_distance = std::ranges::min_element(m_Commands, distance_compare); min_distance != m_Commands.end())
-                return min_distance->m_Identifier[0];
+            std::string current_best_match{""};
 
-            return "";
+            for (auto &cmd : m_Commands)
+            {
+                for (auto &id : cmd.m_Identifier)
+                {
+                    auto distance = string::LevenshteinDistance(identifier, id);
+
+                    if (distance < length)
+                    {
+                        length = distance;
+                        current_best_match = id;
+                    }
+                }
+            }
+
+            return current_best_match;
         }
     };
 }
