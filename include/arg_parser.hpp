@@ -349,7 +349,7 @@ namespace psap // Paul's Simple Argument Parser
     namespace internal
     {
         template <typename T>
-        auto try_catch(T &&t) noexcept -> std::optional<decltype(t())>
+        inline auto try_catch(T &&t) noexcept -> std::optional<decltype(t())>
         {
             try
             {
