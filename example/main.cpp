@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
 
     parser.command("add", "a")
         .help("Adds a new dependency.")
-        .option(Option::Value({"--branch", "-b"}, "Select a specific branch.", "master"))
+        .option(Option::Value({"--branch", "-b"}, "Select a specific branch."))
         .option(Option::Flag({"--link", "-l"}, "Links the specified library."))
         .action(ADD_ACTION);
 
