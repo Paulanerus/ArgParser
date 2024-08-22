@@ -362,6 +362,13 @@ namespace psap // Paul's Simple Argument Parser
         }
     }
 
+    struct ParserConf
+    {
+        std::string name;
+        std::size_t padding = 4;
+        bool color_output = true;
+    };
+
     class ArgParser;
 
     class Command;
@@ -560,9 +567,9 @@ namespace psap // Paul's Simple Argument Parser
     class ArgParser
     {
     public:
-        ArgParser(std::string &&app_name, std::size_t padding = 4, bool color_output = true) noexcept : m_AppName(app_name), m_Padding(padding)
+        ArgParser(ParserConf &&conf) noexcept : m_Conf(std::move(conf))
         {
-            if (color_output)
+            if (conf.color_output)
                 color::enableColor();
         }
 
@@ -689,25 +696,25 @@ namespace psap // Paul's Simple Argument Parser
         {
             if (identifier.empty())
             {
-                std::cout << color::yellow("Usage: ") << m_AppName << color::green(" [Options]") << color::cyan(" [Command]") << "\n\n";
+                std::cout << color::yellow("Usage: ") << m_Conf.name << color::green(" [Options]") << color::cyan(" [Command]") << "\n\n";
 
                 std::cout << color::green("Options:\n");
                 for (const auto &opt : m_Options)
-                    std::cout << "    " << string::Join(opt.identifier) << (!opt.flag ? " <value>" : "") << std::setw((m_MaxLength + 1 + m_Padding) - (std::size_t)opt) << " " << opt.help << "\n";
+                    std::cout << "    " << string::Join(opt.identifier) << (!opt.flag ? " <value>" : "") << std::setw((m_MaxLength + 1 + m_Conf.padding) - (std::size_t)opt) << " " << opt.help << "\n";
 
                 std::cout << "\n";
 
                 std::cout << color::cyan("Commands:\n");
 
                 for (const auto &cmd : m_Commands)
-                    std::cout << "    " << string::Join(cmd.m_Identifier) << std::setw((m_MaxLength + 1 + m_Padding) - (std::size_t)cmd) << " " << cmd.m_Help << "\n";
+                    std::cout << "    " << string::Join(cmd.m_Identifier) << std::setw((m_MaxLength + 1 + m_Conf.padding) - (std::size_t)cmd) << " " << cmd.m_Help << "\n";
 
                 std::cout << "\n";
 
                 std::cout
                     << "See '"
                     << color::yellow
-                    << m_AppName
+                    << m_Conf.name
                     << " help <command>"
                     << color::reset
                     << "' for more information on a specific command."
@@ -734,7 +741,7 @@ namespace psap // Paul's Simple Argument Parser
 
             std::cout
                 << color::yellow("Usage: ")
-                << m_AppName
+                << m_Conf.name
                 << " "
                 << color::cyan(command.m_Identifier[0])
                 << (command.m_Options.size() > 0 ? color::green(" [Options]") : "")
@@ -748,7 +755,7 @@ namespace psap // Paul's Simple Argument Parser
                     << "    "
                     << string::Join(opt.identifier)
                     << (opt.flag ? "" : " <value>")
-                    << std::setw((command.m_MaxLength + 1 + m_Padding) - (std::size_t)opt)
+                    << std::setw((command.m_MaxLength + 1 + m_Conf.padding) - (std::size_t)opt)
                     << " "
                     << opt.help
                     << "\n"
@@ -840,9 +847,7 @@ namespace psap // Paul's Simple Argument Parser
         }
 
     private:
-        const std::string m_AppName;
-
-        const std::size_t m_Padding;
+        const ParserConf m_Conf;
 
         std::vector<Option> m_Options;
 
