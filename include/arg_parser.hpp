@@ -696,13 +696,16 @@ namespace psap // Paul's Simple Argument Parser
         {
             if (identifier.empty())
             {
-                std::cout << color::yellow("Usage: ") << m_Conf.name << color::green(" [Options]") << color::cyan(" [Command]") << "\n\n";
+                std::cout << color::yellow("Usage: ") << m_Conf.name << (m_Options.empty() ? "" : color::green(" [Options]")) << color::cyan(" [Command]") << "\n\n";
 
-                std::cout << color::green("Options:\n");
-                for (const auto &opt : m_Options)
-                    std::cout << "    " << string::join_strings(opt.identifier) << (!opt.flag ? " <value>" : "") << std::setw((m_MaxLength + 1 + m_Conf.padding) - (std::size_t)opt) << " " << opt.help << "\n";
+                if (!m_Options.empty())
+                {
+                    std::cout << color::green("Options:\n");
+                    for (const auto &opt : m_Options)
+                        std::cout << "    " << string::join_strings(opt.identifier) << (!opt.flag ? " <value>" : "") << std::setw((m_MaxLength + 1 + m_Conf.padding) - (std::size_t)opt) << " " << opt.help << "\n";
 
-                std::cout << "\n";
+                    std::cout << "\n";
+                }
 
                 std::cout << color::cyan("Commands:\n");
 
@@ -748,18 +751,23 @@ namespace psap // Paul's Simple Argument Parser
                 << color::light_red(" [Args]")
                 << "\n\n";
 
-            std::cout << color::green("Options:\n");
+            if (command.m_Options.empty())
+                std::cout << color::yellow("No options available.") << std::endl;
+            else
+            {
+                std::cout << color::green("Options:\n");
 
-            for (const auto &opt : command.m_Options)
-                std::cout
-                    << "    "
-                    << string::join_strings(opt.identifier)
-                    << (opt.flag ? "" : " <value>")
-                    << std::setw((command.m_MaxLength + 1 + m_Conf.padding) - (std::size_t)opt)
-                    << " "
-                    << opt.help
-                    << "\n"
-                    << std::endl;
+                for (const auto &opt : command.m_Options)
+                    std::cout
+                        << "    "
+                        << string::join_strings(opt.identifier)
+                        << (opt.flag ? "" : " <value>")
+                        << std::setw((command.m_MaxLength + 1 + m_Conf.padding) - (std::size_t)opt)
+                        << " "
+                        << opt.help
+                        << "\n"
+                        << std::endl;
+            }
         }
 
         void operator()(std::string_view identifier) const noexcept
