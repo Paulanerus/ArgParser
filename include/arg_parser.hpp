@@ -1,5 +1,27 @@
 #pragma once
 
+#ifndef AP_CXX17
+#define AP_CXX17 201703L
+#endif
+
+#ifndef AP_CXX20
+#define AP_CXX20 202002L
+#endif
+
+#if defined(_MSVC_LANG) && defined(_MSC_VER) && 190024210 <= _MSC_FULL_VER
+#define AP_CXX_STD_VER _MSVC_LANG
+#else
+#define AP_CXX_STD_VER __cplusplus
+#endif
+
+#if !defined(__has_include)
+#define __has_include(x) 0
+#endif
+
+#if AP_CXX_STD_VER < AP_CXX20
+#error "ArgParser requires C++20."
+#endif
+
 #include <unordered_set>
 #include <string_view>
 #include <type_traits>
