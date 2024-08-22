@@ -14,8 +14,8 @@
 #define AP_CXX_STD_VER __cplusplus
 #endif
 
-#if AP_CXX_STD_VER < AP_CXX20
-#error "ArgParser requires C++20."
+#if AP_CXX_STD_VER < AP_CXX17
+#error "ArgParser requires C++17."
 #endif
 
 #if !defined(__has_include)
@@ -24,7 +24,7 @@
 
 #if AP_CXX_STD_VER >= AP_CXX20
 #if __has_include(<format>)
-// #define AP_HAS_FORMAT
+#define AP_HAS_FORMAT
 #endif
 #endif
 
@@ -46,6 +46,8 @@
 #include <utility>
 #include <sstream>
 #include <ostream>
+#include <cstdint>
+#include <limits>
 #include <vector>
 #include <string>
 
@@ -127,7 +129,7 @@ namespace psap // Paul's Simple Argument Parser
                 stream << "\033[" << static_cast<std::underlying_type_t<state::color_hue>>(state::color_hue::reset) << "m";
 
                 return stream.str();
-#endif
+#endif // AP_HAS_FORMAT
             }
         }
 
@@ -366,7 +368,7 @@ namespace psap // Paul's Simple Argument Parser
             return stream.str();
         }
 
-        inline std::size_t calc_levenshtein_distance(std::convertible_to<std::string_view> auto src, std::convertible_to<std::string_view> auto target) noexcept
+        inline std::size_t calc_levenshtein_distance(std::string_view src, const std::string_view &target) noexcept
         {
             if (src == target)
                 return 0;
@@ -520,10 +522,18 @@ namespace psap // Paul's Simple Argument Parser
             return false;
         }
 
+#ifdef AP_HAS_CONCEPTS
         bool operator[](std::convertible_to<std::string_view> auto option_id) const noexcept
         {
             return has(option_id);
         }
+#else
+        template <typename T, typename = std::enable_if_t<std::is_convertible<T, std::string_view>::value>>
+        bool operator[](T option_id) const noexcept
+        {
+            return has(option_id);
+        }
+#endif // AP_HAS_CONCEPTS
 
         template <typename T>
         std::optional<T> get(std::string_view option) const
@@ -540,26 +550,26 @@ namespace psap // Paul's Simple Argument Parser
                 return static_cast<T>(it->value);
             else if constexpr (std::is_convertible_v<std::wstring, T>)
                 return static_cast<T>(it->value);
-            else if constexpr (std::is_same_v<T, int8_t>)
+            else if constexpr (std::is_same_v<T, std::int8_t>)
                 return static_cast<int8_t>(it->value[0]);
-            else if constexpr (std::is_same_v<T, uint8_t>)
+            else if constexpr (std::is_same_v<T, std::uint8_t>)
                 return static_cast<uint8_t>(it->value[0]);
-            else if constexpr (std::is_same_v<T, int16_t>)
+            else if constexpr (std::is_same_v<T, std::int16_t>)
                 return internal::try_catch([&it]
-                                           { return static_cast<int16_t>(std::stoi(it->value)); });
-            else if constexpr (std::is_same_v<T, uint16_t>)
+                                           { return static_cast<std::int16_t>(std::stoi(it->value)); });
+            else if constexpr (std::is_same_v<T, std::uint16_t>)
                 return internal::try_catch([&it]
-                                           { return static_cast<uint16_t>(std::stoul(it->value)); });
-            else if constexpr (std::is_same_v<T, int32_t>)
+                                           { return static_cast<std::uint16_t>(std::stoul(it->value)); });
+            else if constexpr (std::is_same_v<T, std::int32_t>)
                 return internal::try_catch([&it]
                                            { return std::stoi(it->value); });
-            else if constexpr (std::is_same_v<T, uint32_t>)
+            else if constexpr (std::is_same_v<T, std::uint32_t>)
                 return internal::try_catch([&it]
-                                           { return static_cast<uint32_t>(std::stoul(it->value)); });
-            else if constexpr (std::is_same_v<T, int64_t>)
+                                           { return static_cast<std::uint32_t>(std::stoul(it->value)); });
+            else if constexpr (std::is_same_v<T, std::int64_t>)
                 return internal::try_catch([&it]
                                            { return std::stol(it->value); });
-            else if constexpr (std::is_same_v<T, uint64_t>)
+            else if constexpr (std::is_same_v<T, std::uint64_t>)
                 return internal::try_catch([&it]
                                            { return std::stoul(it->value); });
             else if constexpr (std::is_same_v<T, float>)
@@ -632,8 +642,12 @@ namespace psap // Paul's Simple Argument Parser
                 color::enable_color();
         }
 
+#ifdef AP_HAS_CONCEPTS
         template <typename... Args>
             requires(std::convertible_to<Args, std::string> && ...)
+#else
+        template <typename... Args, typename = std::enable_if_t<(std::is_convertible_v<Args, std::string> && ...)>>
+#endif // AP_HAS_CONCEPTS
         Command &command(Args &&...args) noexcept
         {
             std::vector<std::string> identifier{std::forward<Args>(args)...};
@@ -710,12 +724,12 @@ namespace psap // Paul's Simple Argument Parser
 
             if (!command_opt.has_value())
             {
-                std::cout << std::format("Unknown command '{}'\n", color::light_red(m_Args[command_idx]));
+                std::cout << "Unknown command '" << color::light_red(m_Args[command_idx]) << "'\n";
 
                 auto similar = get_similar(m_Args[command_idx]);
 
                 if (!similar.empty())
-                    std::cout << std::format("Did you mean: '{}'?", color::green(similar)) << std::endl;
+                    std::cout << "Did you mean: '" << color::green(similar) << "'?" << std::endl;
 
                 return;
             }
@@ -744,8 +758,14 @@ namespace psap // Paul's Simple Argument Parser
                 i++;
             }
 
+#if AP_CXX_STD_VER >= AP_CXX20
             auto it = std::remove_if(m_Args.begin(), m_Args.end(), [&](const std::string &arg)
                                      { return indieces.contains(&arg - &m_Args[0]); });
+
+#else
+            auto it = std::remove_if(m_Args.begin(), m_Args.end(), [&](const std::string &arg)
+                                     { return indieces.find(&arg - &m_Args[0]) != indieces.end(); });
+#endif // AP_CXX_STD_VER >= AP_CXX20
 
             m_Args.erase(it);
 
@@ -870,10 +890,18 @@ namespace psap // Paul's Simple Argument Parser
             return false;
         }
 
+#ifdef AP_HAS_CONCEPTS
         bool operator[](std::convertible_to<std::string_view> auto option_id) const noexcept
         {
             return has(option_id);
         }
+#else
+        template <typename T, typename = std::enable_if_t<std::is_convertible<T, std::string_view>::value>>
+        bool operator[](T option_id) const noexcept
+        {
+            return has(option_id);
+        }
+#endif // AP_HAS_CONCEPTS
 
         template <typename T>
         std::optional<T> get(std::string_view option) const
@@ -889,26 +917,26 @@ namespace psap // Paul's Simple Argument Parser
                 return static_cast<T>(it->value);
             else if constexpr (std::is_convertible_v<std::wstring, T>)
                 return static_cast<T>(it->value);
-            else if constexpr (std::is_same_v<T, int8_t>)
-                return static_cast<int8_t>(it->value[0]);
-            else if constexpr (std::is_same_v<T, uint8_t>)
-                return static_cast<uint8_t>(it->value[0]);
-            else if constexpr (std::is_same_v<T, int16_t>)
+            else if constexpr (std::is_same_v<T, std::int8_t>)
+                return static_cast<std::int8_t>(it->value[0]);
+            else if constexpr (std::is_same_v<T, std::uint8_t>)
+                return static_cast<std::uint8_t>(it->value[0]);
+            else if constexpr (std::is_same_v<T, std::int16_t>)
                 return internal::try_catch([&it]
-                                           { return static_cast<int16_t>(std::stoi(it->value)); });
-            else if constexpr (std::is_same_v<T, uint16_t>)
+                                           { return static_cast<std::int16_t>(std::stoi(it->value)); });
+            else if constexpr (std::is_same_v<T, std::uint16_t>)
                 return internal::try_catch([&it]
-                                           { return static_cast<uint16_t>(std::stoul(it->value)); });
-            else if constexpr (std::is_same_v<T, int32_t>)
+                                           { return static_cast<std::uint16_t>(std::stoul(it->value)); });
+            else if constexpr (std::is_same_v<T, std::int32_t>)
                 return internal::try_catch([&it]
                                            { return std::stoi(it->value); });
-            else if constexpr (std::is_same_v<T, uint32_t>)
+            else if constexpr (std::is_same_v<T, std::uint32_t>)
                 return internal::try_catch([&it]
-                                           { return static_cast<uint32_t>(std::stoul(it->value)); });
-            else if constexpr (std::is_same_v<T, int64_t>)
+                                           { return static_cast<std::uint32_t>(std::stoul(it->value)); });
+            else if constexpr (std::is_same_v<T, std::int64_t>)
                 return internal::try_catch([&it]
                                            { return std::stol(it->value); });
-            else if constexpr (std::is_same_v<T, uint64_t>)
+            else if constexpr (std::is_same_v<T, std::uint64_t>)
                 return internal::try_catch([&it]
                                            { return std::stoul(it->value); });
             else if constexpr (std::is_same_v<T, float>)
@@ -952,7 +980,7 @@ namespace psap // Paul's Simple Argument Parser
             it->value = value;
         }
 
-        std::pair<bool, bool> has_option(std::span<Option> options, std::string_view option)
+        std::pair<bool, bool> has_option(std::vector<Option> &options, std::string_view option)
         {
             auto contains_option = [&option](const Option &opt)
             { return std::find(opt.identifier.begin(), opt.identifier.end(), option) != opt.identifier.end(); };

@@ -16,10 +16,13 @@ inline auto ADD_ACTION = []([[maybe_unused]] const auto &_, const psap::Command 
 {
     auto branch = cmd.get<std::string>("--branch").value_or("master");
 
+    if (cmd.has("-t"))
+        std::cout << "Tested" << std::endl;
+
     if (cmd["--link"])
         std::cout << std::quoted("--link") << " was specified\n";
 
-    std::cout << std::format("Selected branch: {}", branch) << std::endl;
+    std::cout << "Selected branch: " << branch << std::endl;
 };
 
 inline auto REMOVE_ACTION = []([[maybe_unused]] const auto &_, [[maybe_unused]] const auto &__)
