@@ -82,17 +82,17 @@ namespace psap // Paul's Simple Argument Parser
             }
         }
 
-        inline void enableColor() noexcept
+        inline void enable_color() noexcept
         {
             state::global_color().enable();
         }
 
-        inline void disableColor() noexcept
+        inline void disable_color() noexcept
         {
             state::global_color().disable();
         }
 
-        inline bool stateColor() noexcept
+        inline bool color_state() noexcept
         {
             return state::global_color().state();
         }
@@ -179,119 +179,119 @@ namespace psap // Paul's Simple Argument Parser
 
         inline std::ostream &reset(std::ostream &os)
         {
-            if (stateColor())
+            if (color_state())
                 os << "\033[" << static_cast<std::underlying_type_t<state::color_hue>>(state::color_hue::reset) << "m";
             return os;
         }
 
         inline std::ostream &black(std::ostream &os)
         {
-            if (stateColor())
+            if (color_state())
                 os << "\033[" << static_cast<std::underlying_type_t<state::color_hue>>(state::color_hue::black) << "m";
             return os;
         }
 
         inline std::ostream &red(std::ostream &os)
         {
-            if (stateColor())
+            if (color_state())
                 os << "\033[" << static_cast<std::underlying_type_t<state::color_hue>>(state::color_hue::red) << "m";
             return os;
         }
 
         inline std::ostream &green(std::ostream &os)
         {
-            if (stateColor())
+            if (color_state())
                 os << "\033[" << static_cast<std::underlying_type_t<state::color_hue>>(state::color_hue::green) << "m";
             return os;
         }
 
         inline std::ostream &yellow(std::ostream &os)
         {
-            if (stateColor())
+            if (color_state())
                 os << "\033[" << static_cast<std::underlying_type_t<state::color_hue>>(state::color_hue::yellow) << "m";
             return os;
         }
 
         inline std::ostream &blue(std::ostream &os)
         {
-            if (stateColor())
+            if (color_state())
                 os << "\033[" << static_cast<std::underlying_type_t<state::color_hue>>(state::color_hue::blue) << "m";
             return os;
         }
 
         inline std::ostream &magenta(std::ostream &os)
         {
-            if (stateColor())
+            if (color_state())
                 os << "\033[" << static_cast<std::underlying_type_t<state::color_hue>>(state::color_hue::magenta) << "m";
             return os;
         }
 
         inline std::ostream &cyan(std::ostream &os)
         {
-            if (stateColor())
+            if (color_state())
                 os << "\033[" << static_cast<std::underlying_type_t<state::color_hue>>(state::color_hue::cyan) << "m";
             return os;
         }
 
         inline std::ostream &gray(std::ostream &os)
         {
-            if (stateColor())
+            if (color_state())
                 os << "\033[" << static_cast<std::underlying_type_t<state::color_hue>>(state::color_hue::gray) << "m";
             return os;
         }
 
         inline std::ostream &light_black(std::ostream &os)
         {
-            if (stateColor())
+            if (color_state())
                 os << "\033[" << static_cast<std::underlying_type_t<state::color_hue>>(state::color_hue::light_black) << "m";
             return os;
         }
 
         inline std::ostream &light_red(std::ostream &os)
         {
-            if (stateColor())
+            if (color_state())
                 os << "\033[" << static_cast<std::underlying_type_t<state::color_hue>>(state::color_hue::light_red) << "m";
             return os;
         }
 
         inline std::ostream &light_green(std::ostream &os)
         {
-            if (stateColor())
+            if (color_state())
                 os << "\033[" << static_cast<std::underlying_type_t<state::color_hue>>(state::color_hue::light_green) << "m";
             return os;
         }
 
         inline std::ostream &light_yellow(std::ostream &os)
         {
-            if (stateColor())
+            if (color_state())
                 os << "\033[" << static_cast<std::underlying_type_t<state::color_hue>>(state::color_hue::light_yellow) << "m";
             return os;
         }
 
         inline std::ostream &light_blue(std::ostream &os)
         {
-            if (stateColor())
+            if (color_state())
                 os << "\033[" << static_cast<std::underlying_type_t<state::color_hue>>(state::color_hue::light_blue) << "m";
             return os;
         }
 
         inline std::ostream &light_magenta(std::ostream &os)
         {
-            if (stateColor())
+            if (color_state())
                 os << "\033[" << static_cast<std::underlying_type_t<state::color_hue>>(state::color_hue::light_magenta) << "m";
             return os;
         }
 
         inline std::ostream &light_cyan(std::ostream &os)
         {
-            if (stateColor())
+            if (color_state())
                 os << "\033[" << static_cast<std::underlying_type_t<state::color_hue>>(state::color_hue::light_cyan) << "m";
             return os;
         }
 
         inline std::ostream &light_gray(std::ostream &os)
         {
-            if (stateColor())
+            if (color_state())
                 os << "\033[" << static_cast<std::underlying_type_t<state::color_hue>>(state::color_hue::light_gray) << "m";
             return os;
         }
@@ -299,7 +299,7 @@ namespace psap // Paul's Simple Argument Parser
 
     namespace string
     {
-        inline std::string Join(const std::vector<std::string> &vec, const char *delimiter = ", ") noexcept
+        inline std::string join_strings(const std::vector<std::string> &vec, const char *delimiter = ", ") noexcept
         {
             std::ostringstream stream;
 
@@ -317,7 +317,7 @@ namespace psap // Paul's Simple Argument Parser
             return stream.str();
         }
 
-        inline std::size_t LevenshteinDistance(std::convertible_to<std::string_view> auto src, std::convertible_to<std::string_view> auto target) noexcept
+        inline std::size_t calc_levenshtein_distance(std::convertible_to<std::string_view> auto src, std::convertible_to<std::string_view> auto target) noexcept
         {
             if (src == target)
                 return 0;
@@ -569,8 +569,8 @@ namespace psap // Paul's Simple Argument Parser
     public:
         ArgParser(ParserConf &&conf) noexcept : m_Conf(std::move(conf))
         {
-            if (conf.color_output)
-                color::enableColor();
+            if (m_Conf.color_output)
+                color::enable_color();
         }
 
         template <typename... Args>
@@ -617,14 +617,14 @@ namespace psap // Paul's Simple Argument Parser
 
             for (std::size_t i{}; i < m_Args.size(); i++)
             {
-                if (isCommand(m_Args[i]))
+                if (is_command(m_Args[i]))
                 {
                     indieces.insert(i);
                     command_idx = i;
                     break;
                 }
 
-                auto [has, flag] = hasOption(m_Options, m_Args[i]);
+                auto [has, flag] = has_option(m_Options, m_Args[i]);
 
                 indieces.insert(i);
 
@@ -637,22 +637,22 @@ namespace psap // Paul's Simple Argument Parser
                 if (flag || i + 1 >= m_Args.size())
                     continue;
 
-                auto [n_has, _] = hasOption(m_Options, m_Args[i + 1]);
+                auto [n_has, _] = has_option(m_Options, m_Args[i + 1]);
 
                 if (!n_has)
-                    updateValue(m_Args[i], m_Args[i + 1]);
+                    update_value(m_Args[i], m_Args[i + 1]);
 
                 indieces.insert(i + 1);
                 i++;
             }
 
-            auto command_opt = getCommandBy(m_Args[command_idx]);
+            auto command_opt = command_by_id(m_Args[command_idx]);
 
             if (!command_opt.has_value())
             {
                 std::cout << std::format("Unknown command '{}'\n", color::light_red(m_Args[command_idx]));
 
-                auto similar = getSimilar(m_Args[command_idx]);
+                auto similar = get_similar(m_Args[command_idx]);
 
                 if (!similar.empty())
                     std::cout << std::format("Did you mean: '{}'?", color::green(similar)) << std::endl;
@@ -664,7 +664,7 @@ namespace psap // Paul's Simple Argument Parser
 
             for (std::size_t i = command_idx + 1; i < m_Args.size(); i++)
             {
-                auto [c_has, c_flag] = hasOption(command.m_Options, m_Args[i]);
+                auto [c_has, c_flag] = has_option(command.m_Options, m_Args[i]);
 
                 if (!c_has)
                     continue;
@@ -675,7 +675,7 @@ namespace psap // Paul's Simple Argument Parser
                     continue;
                 }
 
-                auto [n_has, _] = hasOption(command.m_Options, m_Args[i + 1]);
+                auto [n_has, _] = has_option(command.m_Options, m_Args[i + 1]);
 
                 if (!n_has)
                     command[m_Args[i]] = m_Args[i + 1];
@@ -700,14 +700,14 @@ namespace psap // Paul's Simple Argument Parser
 
                 std::cout << color::green("Options:\n");
                 for (const auto &opt : m_Options)
-                    std::cout << "    " << string::Join(opt.identifier) << (!opt.flag ? " <value>" : "") << std::setw((m_MaxLength + 1 + m_Conf.padding) - (std::size_t)opt) << " " << opt.help << "\n";
+                    std::cout << "    " << string::join_strings(opt.identifier) << (!opt.flag ? " <value>" : "") << std::setw((m_MaxLength + 1 + m_Conf.padding) - (std::size_t)opt) << " " << opt.help << "\n";
 
                 std::cout << "\n";
 
                 std::cout << color::cyan("Commands:\n");
 
                 for (const auto &cmd : m_Commands)
-                    std::cout << "    " << string::Join(cmd.m_Identifier) << std::setw((m_MaxLength + 1 + m_Conf.padding) - (std::size_t)cmd) << " " << cmd.m_Help << "\n";
+                    std::cout << "    " << string::join_strings(cmd.m_Identifier) << std::setw((m_MaxLength + 1 + m_Conf.padding) - (std::size_t)cmd) << " " << cmd.m_Help << "\n";
 
                 std::cout << "\n";
 
@@ -723,7 +723,7 @@ namespace psap // Paul's Simple Argument Parser
                 return;
             }
 
-            auto command_result = getCommandBy(identifier);
+            auto command_result = command_by_id(identifier);
 
             if (!command_result)
             {
@@ -753,7 +753,7 @@ namespace psap // Paul's Simple Argument Parser
             for (const auto &opt : command.m_Options)
                 std::cout
                     << "    "
-                    << string::Join(opt.identifier)
+                    << string::join_strings(opt.identifier)
                     << (opt.flag ? "" : " <value>")
                     << std::setw((command.m_MaxLength + 1 + m_Conf.padding) - (std::size_t)opt)
                     << " "
@@ -772,7 +772,7 @@ namespace psap // Paul's Simple Argument Parser
             return m_Args;
         }
 
-        std::string argAt(std::size_t idx) const noexcept
+        std::string arg_at(std::size_t idx) const noexcept
         {
             if (idx < m_Args.size())
                 return m_Args[idx];
@@ -782,7 +782,7 @@ namespace psap // Paul's Simple Argument Parser
 
         std::string operator[](std::size_t idx) const noexcept
         {
-            return argAt(idx);
+            return arg_at(idx);
         }
 
         bool has(std::string_view option_id) const noexcept
@@ -863,7 +863,7 @@ namespace psap // Paul's Simple Argument Parser
                 m_MaxLength = length;
         }
 
-        inline void updateValue(std::string_view option, const std::string &value) noexcept
+        void update_value(std::string_view option, const std::string &value) noexcept
         {
             auto it = std::ranges::find_if(m_Options, [&option](const Option &opt)
                                            { return std::ranges::any_of(opt.identifier, [&option](const std::string &id)
@@ -874,7 +874,7 @@ namespace psap // Paul's Simple Argument Parser
             it->value = value;
         }
 
-        std::pair<bool, bool> hasOption(std::span<Option> options, std::string_view option)
+        std::pair<bool, bool> has_option(std::span<Option> options, std::string_view option)
         {
             auto contains_option = [&option](const Option &opt)
             { return std::ranges::find(opt.identifier, option) != opt.identifier.end(); };
@@ -888,14 +888,14 @@ namespace psap // Paul's Simple Argument Parser
             return std::make_pair(false, false);
         }
 
-        bool isCommand(std::string_view identifier) const noexcept
+        bool is_command(std::string_view identifier) const noexcept
         {
             return std::ranges::any_of(m_Commands, [&identifier](const Command &cmd)
                                        { return std::ranges::any_of(cmd.m_Identifier, [&identifier](const auto &id)
                                                                     { return identifier == id; }); });
         }
 
-        std::optional<Command> getCommandBy(std::string_view identifier) const noexcept
+        std::optional<Command> command_by_id(std::string_view identifier) const noexcept
         {
             auto has_identifier = [&](const Command &cmd)
             { return std::ranges::any_of(cmd.m_Identifier, [identifier](const auto &id)
@@ -907,7 +907,7 @@ namespace psap // Paul's Simple Argument Parser
             return std::nullopt;
         }
 
-        std::string getSimilar(std::string_view identifier) const noexcept
+        std::string get_similar(std::string_view identifier) const noexcept
         {
             std::size_t length = std::numeric_limits<std::size_t>::max();
 
@@ -917,7 +917,7 @@ namespace psap // Paul's Simple Argument Parser
             {
                 for (auto &id : cmd.m_Identifier)
                 {
-                    auto distance = string::LevenshteinDistance(identifier, id);
+                    auto distance = string::calc_levenshtein_distance(identifier, id);
 
                     if (distance < length)
                     {
@@ -926,7 +926,6 @@ namespace psap // Paul's Simple Argument Parser
                     }
                 }
             }
-
             return current_best_match;
         }
     };
