@@ -7,7 +7,7 @@ int main(int argc, char *argv[])
 {
     using namespace psap;
 
-    ArgParser parser{"tram"};
+    ArgParser parser{"tram", 5};
 
     parser.option(Option::Flag({"--test", "-t"}, "Global test flag"));
     parser.option(Option::Value({"--value", "-v"}, "Global test value"));

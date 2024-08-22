@@ -364,6 +364,8 @@ namespace psap // Paul's Simple Argument Parser
 
     class ArgParser;
 
+    class Command;
+
     struct Option
     {
         std::vector<std::string> identifier;
@@ -398,6 +400,8 @@ namespace psap // Paul's Simple Argument Parser
 
         friend ArgParser;
 
+        friend Command;
+
     private:
         operator std::size_t() const noexcept
         {
@@ -405,7 +409,7 @@ namespace psap // Paul's Simple Argument Parser
             for (auto &id : identifier)
                 size += id.length() + 2;
 
-            return size - 2;
+            return size - (flag ? 2 : -6);
         }
     };
 
@@ -422,6 +426,11 @@ namespace psap // Paul's Simple Argument Parser
 
         Command &option(Option &&arg) noexcept
         {
+            std::size_t length = arg;
+
+            if (length > m_MaxLength)
+                m_MaxLength = length;
+
             m_Options.push_back(std::move(arg));
             return *this;
         }
@@ -513,6 +522,8 @@ namespace psap // Paul's Simple Argument Parser
 
         std::vector<Option> m_Options;
 
+        std::size_t m_MaxLength{};
+
         std::function<void(const ArgParser &parser, const Command &command)> m_Func;
 
         void execute(const ArgParser &parser)
@@ -549,7 +560,7 @@ namespace psap // Paul's Simple Argument Parser
     class ArgParser
     {
     public:
-        ArgParser(std::string &&app_name, bool color_output = true) noexcept : m_AppName(app_name)
+        ArgParser(std::string &&app_name, std::size_t padding = 4, bool color_output = true) noexcept : m_AppName(app_name), m_Padding(padding)
         {
             if (color_output)
                 color::enableColor();
@@ -561,11 +572,17 @@ namespace psap // Paul's Simple Argument Parser
         {
             std::vector<std::string> identifier{std::forward<Args>(args)...};
 
-            return m_Commands.emplace_back(std::move(identifier));
+            Command &cmd = m_Commands.emplace_back(std::move(identifier));
+
+            update_length(cmd);
+
+            return cmd;
         }
 
         ArgParser &option(Option &&option)
         {
+            update_length(option);
+
             m_Options.emplace_back(std::move(option));
             return *this;
         }
@@ -676,14 +693,14 @@ namespace psap // Paul's Simple Argument Parser
 
                 std::cout << color::green("Options:\n");
                 for (const auto &opt : m_Options)
-                    std::cout << "    " << string::Join(opt.identifier) << (!opt.flag ? " <value>" : "") << std::setw(27 - (std::size_t)opt) << " " << opt.help << "\n";
+                    std::cout << "    " << string::Join(opt.identifier) << (!opt.flag ? " <value>" : "") << std::setw((m_MaxLength + 1 + m_Padding) - (std::size_t)opt) << " " << opt.help << "\n";
 
                 std::cout << "\n";
 
                 std::cout << color::cyan("Commands:\n");
 
                 for (const auto &cmd : m_Commands)
-                    std::cout << "    " << string::Join(cmd.m_Identifier) << std::setw(27 - (std::size_t)cmd) << " " << cmd.m_Help << "\n";
+                    std::cout << "    " << string::Join(cmd.m_Identifier) << std::setw((m_MaxLength + 1 + m_Padding) - (std::size_t)cmd) << " " << cmd.m_Help << "\n";
 
                 std::cout << "\n";
 
@@ -726,14 +743,14 @@ namespace psap // Paul's Simple Argument Parser
 
             std::cout << color::green("Options:\n");
 
-            for (const auto &arg : command.m_Options)
+            for (const auto &opt : command.m_Options)
                 std::cout
                     << "    "
-                    << string::Join(arg.identifier)
-                    << (arg.flag ? "" : " <value>")
-                    << std::setw(17 - (std::size_t)arg)
+                    << string::Join(opt.identifier)
+                    << (opt.flag ? "" : " <value>")
+                    << std::setw((command.m_MaxLength + 1 + m_Padding) - (std::size_t)opt)
                     << " "
-                    << arg.help
+                    << opt.help
                     << "\n"
                     << std::endl;
         }
@@ -825,11 +842,21 @@ namespace psap // Paul's Simple Argument Parser
     private:
         const std::string m_AppName;
 
+        const std::size_t m_Padding;
+
         std::vector<Option> m_Options;
 
         std::vector<Command> m_Commands;
 
         std::vector<std::string> m_Args;
+
+        std::size_t m_MaxLength{};
+
+        void update_length(const std::size_t &length) noexcept
+        {
+            if (length > m_MaxLength)
+                m_MaxLength = length;
+        }
 
         inline void updateValue(std::string_view option, const std::string &value) noexcept
         {
