@@ -383,17 +383,17 @@ namespace psap // Paul's Simple Argument Parser
                 .help = std::move(help_txt),
                 .flag = true,
                 .active = false,
-                .value = {}};
+                .value = ""};
         }
 
-        static Option Value(std::initializer_list<std::string> &&identifier, std::string &&help_txt, std::string &&val = "")
+        static Option Value(std::initializer_list<std::string> &&identifier, std::string &&help_txt)
         {
             return Option{
                 .identifier = std::move(identifier),
                 .help = std::move(help_txt),
                 .flag = false,
                 .active = false,
-                .value = std::move(val)};
+                .value = ""};
         }
 
         friend ArgParser;
