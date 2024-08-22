@@ -676,7 +676,7 @@ namespace psap // Paul's Simple Argument Parser
 
                 std::cout << color::green("Options:\n");
                 for (const auto &opt : m_Options)
-                    std::cout << "    " << string::Join(opt.identifier) << std::setw(27 - (std::size_t)opt) << " " << opt.help << "\n";
+                    std::cout << "    " << string::Join(opt.identifier) << (!opt.flag ? " <value>" : "") << std::setw(27 - (std::size_t)opt) << " " << opt.help << "\n";
 
                 std::cout << "\n";
 
@@ -730,7 +730,7 @@ namespace psap // Paul's Simple Argument Parser
                 std::cout
                     << "    "
                     << string::Join(arg.identifier)
-                    << (arg.flag ? "" : " <value> ")
+                    << (arg.flag ? "" : " <value>")
                     << std::setw(17 - (std::size_t)arg)
                     << " "
                     << arg.help
