@@ -28,12 +28,6 @@
 #endif
 #endif
 
-#if AP_CXX_STD_VER >= AP_CXX20
-#if __has_include(<concepts>)
-#define AP_HAS_CONCEPTS
-#endif
-#endif
-
 #include <unordered_set>
 #include <string_view>
 #include <type_traits>
@@ -53,10 +47,6 @@
 
 #if defined(AP_HAS_FORMAT)
 #include <format>
-#endif
-
-#if defined(AP_HAS_CONCEPTS)
-#include <concepts>
 #endif
 
 namespace psap // Paul's Simple Argument Parser
@@ -439,21 +429,13 @@ namespace psap // Paul's Simple Argument Parser
         static Option Flag(std::initializer_list<std::string> &&identifier, std::string &&help_txt)
         {
             return Option{
-                .identifier = std::move(identifier),
-                .help = std::move(help_txt),
-                .flag = true,
-                .active = false,
-                .value = ""};
+                std::move(identifier), std::move(help_txt), true, false, ""};
         }
 
         static Option Value(std::initializer_list<std::string> &&identifier, std::string &&help_txt)
         {
             return Option{
-                .identifier = std::move(identifier),
-                .help = std::move(help_txt),
-                .flag = false,
-                .active = false,
-                .value = ""};
+                std::move(identifier), std::move(help_txt), false, false, ""};
         }
 
         friend ArgParser;
@@ -522,18 +504,11 @@ namespace psap // Paul's Simple Argument Parser
             return false;
         }
 
-#ifdef AP_HAS_CONCEPTS
-        bool operator[](std::convertible_to<std::string_view> auto option_id) const noexcept
-        {
-            return has(option_id);
-        }
-#else
         template <typename T, typename = std::enable_if_t<std::is_convertible<T, std::string_view>::value>>
         bool operator[](T option_id) const noexcept
         {
             return has(option_id);
         }
-#endif // AP_HAS_CONCEPTS
 
         template <typename T>
         std::optional<T> get(std::string_view option) const
@@ -642,12 +617,7 @@ namespace psap // Paul's Simple Argument Parser
                 color::enable_color();
         }
 
-#ifdef AP_HAS_CONCEPTS
-        template <typename... Args>
-            requires(std::convertible_to<Args, std::string> && ...)
-#else
         template <typename... Args, typename = std::enable_if_t<(std::is_convertible_v<Args, std::string> && ...)>>
-#endif // AP_HAS_CONCEPTS
         Command &command(Args &&...args) noexcept
         {
             std::vector<std::string> identifier{std::forward<Args>(args)...};
@@ -758,14 +728,8 @@ namespace psap // Paul's Simple Argument Parser
                 i++;
             }
 
-#if AP_CXX_STD_VER >= AP_CXX20
-            auto it = std::remove_if(m_Args.begin(), m_Args.end(), [&](const std::string &arg)
-                                     { return indieces.contains(&arg - &m_Args[0]); });
-
-#else
             auto it = std::remove_if(m_Args.begin(), m_Args.end(), [&](const std::string &arg)
                                      { return indieces.find(&arg - &m_Args[0]) != indieces.end(); });
-#endif // AP_CXX_STD_VER >= AP_CXX20
 
             m_Args.erase(it);
 
@@ -890,18 +854,11 @@ namespace psap // Paul's Simple Argument Parser
             return false;
         }
 
-#ifdef AP_HAS_CONCEPTS
-        bool operator[](std::convertible_to<std::string_view> auto option_id) const noexcept
-        {
-            return has(option_id);
-        }
-#else
         template <typename T, typename = std::enable_if_t<std::is_convertible<T, std::string_view>::value>>
         bool operator[](T option_id) const noexcept
         {
             return has(option_id);
         }
-#endif // AP_HAS_CONCEPTS
 
         template <typename T>
         std::optional<T> get(std::string_view option) const
