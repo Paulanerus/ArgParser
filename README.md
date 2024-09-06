@@ -1,8 +1,8 @@
 # ArgParser
 
-ArgParser is a simple, single header-only C++20 library to parse command like input. Similar in functionality to tools like [cargo](https://doc.rust-lang.org/stable/cargo/), the Rust package manager. It started as a testing project and after some development I thought that someone could use this as well.
+ArgParser is a simple, single header-only C++17 library to parse command like input. Similar in functionality to tools like [cargo](https://doc.rust-lang.org/stable/cargo/), the Rust package manager. It started as a testing project and after some development I thought that someone could use this as well.
 
-This library was tested on Windows (MSCV) and GNU/Linux (GCC), with additional checking on GNU/Linux with [Valgrind](https://valgrind.org/)
+This library was tested on Windows (MSCV) and GNU/Linux (GCC, Clang), with additional checking on GNU/Linux with [Valgrind](https://valgrind.org/)
 
 ## Examples
 
