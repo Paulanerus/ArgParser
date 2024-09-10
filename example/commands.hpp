@@ -2,32 +2,45 @@
 
 #include "arg_parser.hpp"
 
-inline auto HELP_ACTION = [](const psap::ArgParser &parser, [[maybe_unused]] const auto &_)
+#ifdef _MSC_VER
+#define AP_MAYBE_UNUSED
+
+#pragma warning(push)
+#pragma warning(disable : 4100)
+
+#else
+#define AP_MAYBE_UNUSED [[maybe_unused]]
+#endif
+
+inline auto HELP_ACTION = [](const psap::ArgParser &parser, AP_MAYBE_UNUSED const auto &_)
 {
     parser(parser[0]);
 };
 
-inline auto NEW_ACTION = []([[maybe_unused]] const auto &_, [[maybe_unused]] const auto &__)
+inline auto NEW_ACTION = [](AP_MAYBE_UNUSED const auto &_, AP_MAYBE_UNUSED const auto &__)
 {
     std::cout << "New" << std::endl;
 };
 
-inline auto ADD_ACTION = []([[maybe_unused]] const auto &_, const psap::Command &cmd)
+inline auto ADD_ACTION = [](AP_MAYBE_UNUSED const auto &_, AP_MAYBE_UNUSED const psap::Command &cmd)
 {
     auto branch = cmd.get<std::string>("--branch").value_or("master");
+
+    if (cmd.has("-t"))
+        std::cout << "Tested" << std::endl;
 
     if (cmd["--link"])
         std::cout << std::quoted("--link") << " was specified\n";
 
-    std::cout << std::format("Selected branch: {}", branch) << std::endl;
+    std::cout << "Selected branch: " << branch << std::endl;
 };
 
-inline auto REMOVE_ACTION = []([[maybe_unused]] const auto &_, [[maybe_unused]] const auto &__)
+inline auto REMOVE_ACTION = [](AP_MAYBE_UNUSED const auto &_, AP_MAYBE_UNUSED const auto &__)
 {
     std::cout << "Remove" << std::endl;
 };
 
-inline auto BUILD_ACTION = []([[maybe_unused]] const auto &_, [[maybe_unused]] const auto &__)
+inline auto BUILD_ACTION = [](AP_MAYBE_UNUSED const auto &_, AP_MAYBE_UNUSED const auto &__)
 {
     std::cout << "Build" << std::endl;
 };
@@ -44,3 +57,7 @@ inline auto RUN_ACTION = [](const psap::ArgParser &parser, const psap::Command &
     if (cmd["--debug"])
         std::cout << "Debug was specified" << std::endl;
 };
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif

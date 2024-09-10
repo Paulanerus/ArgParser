@@ -1,5 +1,33 @@
 #pragma once
 
+#ifndef AP_CXX17
+#define AP_CXX17 201703L
+#endif
+
+#ifndef AP_CXX20
+#define AP_CXX20 202002L
+#endif
+
+#if defined(_MSVC_LANG) && defined(_MSC_VER) && 190024210 <= _MSC_FULL_VER
+#define AP_CXX_STD_VER _MSVC_LANG
+#else
+#define AP_CXX_STD_VER __cplusplus
+#endif
+
+#if AP_CXX_STD_VER < AP_CXX17
+#error "ArgParser requires C++17."
+#endif
+
+#if !defined(__has_include)
+#define __has_include(x) 0
+#endif
+
+#if AP_CXX_STD_VER >= AP_CXX20
+#if __has_include(<format>)
+#define AP_HAS_FORMAT
+#endif
+#endif
+
 #include <unordered_set>
 #include <string_view>
 #include <type_traits>
@@ -7,15 +35,19 @@
 #include <algorithm>
 #include <optional>
 #include <iostream>
-#include <concepts>
+#include <iterator>
 #include <iomanip>
 #include <utility>
 #include <sstream>
 #include <ostream>
+#include <cstdint>
+#include <limits>
 #include <vector>
-#include <ranges>
-#include <format>
 #include <string>
+
+#if defined(AP_HAS_FORMAT)
+#include <format>
+#endif
 
 namespace psap // Paul's Simple Argument Parser
 {
@@ -78,7 +110,16 @@ namespace psap // Paul's Simple Argument Parser
                 if (!global_color().state())
                     return text;
 
+#ifdef AP_HAS_FORMAT
                 return std::format("\033[{}m{}\033[{}m", static_cast<std::underlying_type_t<state::color_hue>>(hue), text, static_cast<std::underlying_type_t<state::color_hue>>(state::color_hue::reset));
+#else
+                std::ostringstream stream;
+                stream << "\033[" << static_cast<std::underlying_type_t<state::color_hue>>(hue) << "m";
+                stream << text;
+                stream << "\033[" << static_cast<std::underlying_type_t<state::color_hue>>(state::color_hue::reset) << "m";
+
+                return stream.str();
+#endif // AP_HAS_FORMAT
             }
         }
 
@@ -317,7 +358,7 @@ namespace psap // Paul's Simple Argument Parser
             return stream.str();
         }
 
-        inline std::size_t calc_levenshtein_distance(std::convertible_to<std::string_view> auto src, std::convertible_to<std::string_view> auto target) noexcept
+        inline std::size_t calc_levenshtein_distance(std::string_view src, const std::string_view &target) noexcept
         {
             if (src == target)
                 return 0;
@@ -388,21 +429,13 @@ namespace psap // Paul's Simple Argument Parser
         static Option Flag(std::initializer_list<std::string> &&identifier, std::string &&help_txt)
         {
             return Option{
-                .identifier = std::move(identifier),
-                .help = std::move(help_txt),
-                .flag = true,
-                .active = false,
-                .value = ""};
+                std::move(identifier), std::move(help_txt), true, false, ""};
         }
 
         static Option Value(std::initializer_list<std::string> &&identifier, std::string &&help_txt)
         {
             return Option{
-                .identifier = std::move(identifier),
-                .help = std::move(help_txt),
-                .flag = false,
-                .active = false,
-                .value = ""};
+                std::move(identifier), std::move(help_txt), false, false, ""};
         }
 
         friend ArgParser;
@@ -456,12 +489,23 @@ namespace psap // Paul's Simple Argument Parser
 
         bool has(std::string_view option_id) const noexcept
         {
-            return std::ranges::any_of(m_Options, [option_id](const Option &opt)
-                                       { return opt.active && std::ranges::any_of(opt.identifier, [option_id](const std::string &id)
-                                                                                  { return option_id == id; }); });
+            for (auto &opt : m_Options)
+            {
+                if (!opt.active)
+                    continue;
+
+                for (auto &id : opt.identifier)
+                {
+                    if (option_id == id)
+                        return true;
+                }
+            }
+
+            return false;
         }
 
-        bool operator[](std::convertible_to<std::string_view> auto option_id) const noexcept
+        template <typename T, typename = std::enable_if_t<std::is_convertible<T, std::string_view>::value>>
+        bool operator[](T option_id) const noexcept
         {
             return has(option_id);
         }
@@ -469,9 +513,9 @@ namespace psap // Paul's Simple Argument Parser
         template <typename T>
         std::optional<T> get(std::string_view option) const
         {
-            auto it = std::ranges::find_if(m_Options, [&option](const Option &opt)
-                                           { return std::ranges::any_of(opt.identifier, [&option](const std::string &id)
-                                                                        { return option == id; }); });
+            auto it = std::find_if(m_Options.begin(), m_Options.end(), [&option](const Option &opt)
+                                   { return std::any_of(opt.identifier.begin(), opt.identifier.end(), [&option](const std::string &id)
+                                                        { return option == id; }); });
 
             if (it == m_Options.end() || it->value.empty())
                 return std::nullopt;
@@ -481,26 +525,26 @@ namespace psap // Paul's Simple Argument Parser
                 return static_cast<T>(it->value);
             else if constexpr (std::is_convertible_v<std::wstring, T>)
                 return static_cast<T>(it->value);
-            else if constexpr (std::is_same_v<T, int8_t>)
+            else if constexpr (std::is_same_v<T, std::int8_t>)
                 return static_cast<int8_t>(it->value[0]);
-            else if constexpr (std::is_same_v<T, uint8_t>)
+            else if constexpr (std::is_same_v<T, std::uint8_t>)
                 return static_cast<uint8_t>(it->value[0]);
-            else if constexpr (std::is_same_v<T, int16_t>)
+            else if constexpr (std::is_same_v<T, std::int16_t>)
                 return internal::try_catch([&it]
-                                           { return static_cast<int16_t>(std::stoi(it->value)); });
-            else if constexpr (std::is_same_v<T, uint16_t>)
+                                           { return static_cast<std::int16_t>(std::stoi(it->value)); });
+            else if constexpr (std::is_same_v<T, std::uint16_t>)
                 return internal::try_catch([&it]
-                                           { return static_cast<uint16_t>(std::stoul(it->value)); });
-            else if constexpr (std::is_same_v<T, int32_t>)
+                                           { return static_cast<std::uint16_t>(std::stoul(it->value)); });
+            else if constexpr (std::is_same_v<T, std::int32_t>)
                 return internal::try_catch([&it]
                                            { return std::stoi(it->value); });
-            else if constexpr (std::is_same_v<T, uint32_t>)
+            else if constexpr (std::is_same_v<T, std::uint32_t>)
                 return internal::try_catch([&it]
-                                           { return static_cast<uint32_t>(std::stoul(it->value)); });
-            else if constexpr (std::is_same_v<T, int64_t>)
+                                           { return static_cast<std::uint32_t>(std::stoul(it->value)); });
+            else if constexpr (std::is_same_v<T, std::int64_t>)
                 return internal::try_catch([&it]
                                            { return std::stol(it->value); });
-            else if constexpr (std::is_same_v<T, uint64_t>)
+            else if constexpr (std::is_same_v<T, std::uint64_t>)
                 return internal::try_catch([&it]
                                            { return std::stoul(it->value); });
             else if constexpr (std::is_same_v<T, float>)
@@ -545,9 +589,9 @@ namespace psap // Paul's Simple Argument Parser
         {
             static std::string fallback;
 
-            auto it = std::ranges::find_if(m_Options, [&option](const Option &opt)
-                                           { return std::ranges::any_of(opt.identifier, [&option](const std::string &id)
-                                                                        { return option == id; }); });
+            auto it = std::find_if(m_Options.begin(), m_Options.end(), [&option](const Option &opt)
+                                   { return std::any_of(opt.identifier.begin(), opt.identifier.end(), [&option](const std::string &id)
+                                                        { return option == id; }); });
             if (it == m_Options.end())
                 return fallback; // Should never happen...
 
@@ -573,8 +617,7 @@ namespace psap // Paul's Simple Argument Parser
                 color::enable_color();
         }
 
-        template <typename... Args>
-            requires(std::convertible_to<Args, std::string> && ...)
+        template <typename... Args, typename = std::enable_if_t<(std::is_convertible_v<Args, std::string> && ...)>>
         Command &command(Args &&...args) noexcept
         {
             std::vector<std::string> identifier{std::forward<Args>(args)...};
@@ -598,7 +641,8 @@ namespace psap // Paul's Simple Argument Parser
         {
             if (argc - start == 0)
             {
-                auto it = std::ranges::find(m_Commands, true, &Command::m_Fallback);
+                auto it = std::find_if(m_Commands.begin(), m_Commands.end(), [](const Command &cmd)
+                                       { return cmd.m_Fallback == true; });
 
                 if (it != m_Commands.end())
                     it->execute(*this);
@@ -608,9 +652,9 @@ namespace psap // Paul's Simple Argument Parser
 
             m_Args.assign(argv + start, argv + argc);
 
-            std::ranges::for_each(m_Args, [](std::string &arg)
-                                  { std::transform(arg.begin(), arg.end(), arg.begin(), [](auto c)
-                                                   { return std::tolower(c); }); });
+            std::for_each(m_Args.begin(), m_Args.end(), [](std::string &arg)
+                          { std::transform(arg.begin(), arg.end(), arg.begin(), [](auto c)
+                                           { return std::tolower(c); }); });
 
             std::size_t command_idx{};
             std::unordered_set<std::size_t> indieces;
@@ -650,12 +694,12 @@ namespace psap // Paul's Simple Argument Parser
 
             if (!command_opt.has_value())
             {
-                std::cout << std::format("Unknown command '{}'\n", color::light_red(m_Args[command_idx]));
+                std::cout << "Unknown command '" << color::light_red(m_Args[command_idx]) << "'\n";
 
                 auto similar = get_similar(m_Args[command_idx]);
 
                 if (!similar.empty())
-                    std::cout << std::format("Did you mean: '{}'?", color::green(similar)) << std::endl;
+                    std::cout << "Did you mean: '" << color::green(similar) << "'?" << std::endl;
 
                 return;
             }
@@ -684,10 +728,10 @@ namespace psap // Paul's Simple Argument Parser
                 i++;
             }
 
-            auto it = std::ranges::remove_if(m_Args, [&](const std::string &arg)
-                                             { return indieces.contains(&arg - &m_Args[0]); });
+            auto it = std::remove_if(m_Args.begin(), m_Args.end(), [&](const std::string &arg)
+                                     { return indieces.find(&arg - &m_Args[0]) != indieces.end(); });
 
-            m_Args.erase(it.begin(), it.end());
+            m_Args.erase(it);
 
             command.execute(*this);
         }
@@ -795,12 +839,23 @@ namespace psap // Paul's Simple Argument Parser
 
         bool has(std::string_view option_id) const noexcept
         {
-            return std::ranges::any_of(m_Options, [option_id](const Option &opt)
-                                       { return opt.active && std::ranges::any_of(opt.identifier, [option_id](const std::string &id)
-                                                                                  { return option_id == id; }); });
+            for (auto &opt : m_Options)
+            {
+                if (!opt.active)
+                    continue;
+
+                for (auto &id : opt.identifier)
+                {
+                    if (option_id == id)
+                        return true;
+                }
+            }
+
+            return false;
         }
 
-        bool operator[](std::convertible_to<std::string_view> auto option_id) const noexcept
+        template <typename T, typename = std::enable_if_t<std::is_convertible<T, std::string_view>::value>>
+        bool operator[](T option_id) const noexcept
         {
             return has(option_id);
         }
@@ -808,9 +863,9 @@ namespace psap // Paul's Simple Argument Parser
         template <typename T>
         std::optional<T> get(std::string_view option) const
         {
-            auto it = std::ranges::find_if(m_Options, [&option](const Option &opt)
-                                           { return std::ranges::any_of(opt.identifier, [&option](const std::string &id)
-                                                                        { return option == id; }); });
+            auto it = std::find_if(m_Options.begin(), m_Options.end(), [&option](const Option &opt)
+                                   { return std::any_of(opt.identifier.begin(), opt.identifier.end(), [&option](const std::string &id)
+                                                        { return option == id; }); });
 
             if (it == m_Options.end() || it->value.empty())
                 return std::nullopt;
@@ -819,26 +874,26 @@ namespace psap // Paul's Simple Argument Parser
                 return static_cast<T>(it->value);
             else if constexpr (std::is_convertible_v<std::wstring, T>)
                 return static_cast<T>(it->value);
-            else if constexpr (std::is_same_v<T, int8_t>)
-                return static_cast<int8_t>(it->value[0]);
-            else if constexpr (std::is_same_v<T, uint8_t>)
-                return static_cast<uint8_t>(it->value[0]);
-            else if constexpr (std::is_same_v<T, int16_t>)
+            else if constexpr (std::is_same_v<T, std::int8_t>)
+                return static_cast<std::int8_t>(it->value[0]);
+            else if constexpr (std::is_same_v<T, std::uint8_t>)
+                return static_cast<std::uint8_t>(it->value[0]);
+            else if constexpr (std::is_same_v<T, std::int16_t>)
                 return internal::try_catch([&it]
-                                           { return static_cast<int16_t>(std::stoi(it->value)); });
-            else if constexpr (std::is_same_v<T, uint16_t>)
+                                           { return static_cast<std::int16_t>(std::stoi(it->value)); });
+            else if constexpr (std::is_same_v<T, std::uint16_t>)
                 return internal::try_catch([&it]
-                                           { return static_cast<uint16_t>(std::stoul(it->value)); });
-            else if constexpr (std::is_same_v<T, int32_t>)
+                                           { return static_cast<std::uint16_t>(std::stoul(it->value)); });
+            else if constexpr (std::is_same_v<T, std::int32_t>)
                 return internal::try_catch([&it]
                                            { return std::stoi(it->value); });
-            else if constexpr (std::is_same_v<T, uint32_t>)
+            else if constexpr (std::is_same_v<T, std::uint32_t>)
                 return internal::try_catch([&it]
-                                           { return static_cast<uint32_t>(std::stoul(it->value)); });
-            else if constexpr (std::is_same_v<T, int64_t>)
+                                           { return static_cast<std::uint32_t>(std::stoul(it->value)); });
+            else if constexpr (std::is_same_v<T, std::int64_t>)
                 return internal::try_catch([&it]
                                            { return std::stol(it->value); });
-            else if constexpr (std::is_same_v<T, uint64_t>)
+            else if constexpr (std::is_same_v<T, std::uint64_t>)
                 return internal::try_catch([&it]
                                            { return std::stoul(it->value); });
             else if constexpr (std::is_same_v<T, float>)
@@ -873,21 +928,21 @@ namespace psap // Paul's Simple Argument Parser
 
         void update_value(std::string_view option, const std::string &value) noexcept
         {
-            auto it = std::ranges::find_if(m_Options, [&option](const Option &opt)
-                                           { return std::ranges::any_of(opt.identifier, [&option](const std::string &id)
-                                                                        { return option == id; }); });
+            auto it = std::find_if(m_Options.begin(), m_Options.end(), [&option](const Option &opt)
+                                   { return std::any_of(opt.identifier.begin(), opt.identifier.end(), [&option](const std::string &id)
+                                                        { return option == id; }); });
             if (it == m_Options.end())
                 return;
 
             it->value = value;
         }
 
-        std::pair<bool, bool> has_option(std::span<Option> options, std::string_view option)
+        std::pair<bool, bool> has_option(std::vector<Option> &options, std::string_view option)
         {
             auto contains_option = [&option](const Option &opt)
-            { return std::ranges::find(opt.identifier, option) != opt.identifier.end(); };
+            { return std::find(opt.identifier.begin(), opt.identifier.end(), option) != opt.identifier.end(); };
 
-            if (auto opt = std::ranges::find_if(options, contains_option); opt != options.end())
+            if (auto opt = std::find_if(options.begin(), options.end(), contains_option); opt != options.end())
             {
                 opt->active = true;
                 return std::make_pair(true, opt->flag);
@@ -898,18 +953,25 @@ namespace psap // Paul's Simple Argument Parser
 
         bool is_command(std::string_view identifier) const noexcept
         {
-            return std::ranges::any_of(m_Commands, [&identifier](const Command &cmd)
-                                       { return std::ranges::any_of(cmd.m_Identifier, [&identifier](const auto &id)
-                                                                    { return identifier == id; }); });
+            for (auto &cmd : m_Commands)
+            {
+                for (auto &id : cmd.m_Identifier)
+                {
+                    if (identifier == id)
+                        return true;
+                }
+            }
+
+            return false;
         }
 
         std::optional<Command> command_by_id(std::string_view identifier) const noexcept
         {
             auto has_identifier = [&](const Command &cmd)
-            { return std::ranges::any_of(cmd.m_Identifier, [identifier](const auto &id)
-                                         { return id == identifier; }); };
+            { return std::any_of(cmd.m_Identifier.begin(), cmd.m_Identifier.end(), [identifier](const auto &id)
+                                 { return id == identifier; }); };
 
-            if (auto cmd = std::ranges::find_if(m_Commands, has_identifier); cmd != m_Commands.end())
+            if (auto cmd = std::find_if(m_Commands.begin(), m_Commands.end(), has_identifier); cmd != m_Commands.end())
                 return *cmd;
 
             return std::nullopt;
