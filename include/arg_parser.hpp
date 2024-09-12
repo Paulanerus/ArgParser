@@ -374,7 +374,7 @@ namespace psap // Paul's Simple Argument Parser
 
                 auto corner = i;
 
-                for (size_t j{}; j < target.length(); j++)
+                for (std::size_t j{}; j < target.length(); j++)
                 {
                     auto upper = distance[j + 1];
 
