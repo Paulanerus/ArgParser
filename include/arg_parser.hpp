@@ -44,6 +44,7 @@
 #include <limits>
 #include <vector>
 #include <string>
+#include <tuple>
 
 #if defined(AP_HAS_FORMAT)
 #include <format>
@@ -385,6 +386,24 @@ namespace psap // Paul's Simple Argument Parser
 
             return distance[target.length()];
         }
+
+        inline bool starts_with(const std::string &str, const std::string &start) noexcept
+        {
+#if AP_CXX_STD_VER >= AP_CXX20
+            return str.starts_with(start);
+#else
+            if (str.length() < start.length())
+                return false;
+
+            for (std::size_t i{}; i < start.length(); i++)
+            {
+                if (str[i] != start[i])
+                    return false;
+            }
+
+            return true;
+#endif // AP_CXX_STD_VER >= AP_CXX20
+        }
     }
 
     namespace internal
@@ -403,11 +422,19 @@ namespace psap // Paul's Simple Argument Parser
         }
     }
 
+    enum class ValueStyle
+    {
+        Space,
+        EqualSign,
+        Both,
+    };
+
     struct ParserConf
     {
         std::string name;
-        std::size_t padding = 4;
-        bool color_output = true;
+        std::size_t padding{4};
+        bool color_output{true};
+        ValueStyle value_style{ValueStyle::Both};
     };
 
     class ArgParser;
@@ -591,7 +618,7 @@ namespace psap // Paul's Simple Argument Parser
 
             auto it = std::find_if(m_Options.begin(), m_Options.end(), [&option](const Option &opt)
                                    { return std::any_of(opt.identifier.begin(), opt.identifier.end(), [&option](const std::string &id)
-                                                        { return option == id; }); });
+                                                        { return string::starts_with(option, id); }); });
             if (it == m_Options.end())
                 return fallback; // Should never happen...
 
@@ -668,7 +695,7 @@ namespace psap // Paul's Simple Argument Parser
                     break;
                 }
 
-                auto [has, flag] = has_option(m_Options, m_Args[i]);
+                auto [has, flag, contains_val] = is_option(m_Options, m_Args[i]);
 
                 indieces.insert(i);
 
@@ -678,16 +705,28 @@ namespace psap // Paul's Simple Argument Parser
                     break;
                 }
 
-                if (flag || i + 1 >= m_Args.size())
+                if (flag)
                     continue;
 
-                auto [n_has, _] = has_option(m_Options, m_Args[i + 1]);
+                if (contains_val)
+                {
+                    auto val = m_Args[i].substr(m_Args[i].find_first_of('=') + 1);
 
-                if (!n_has)
-                    update_value(m_Args[i], m_Args[i + 1]);
+                    update_value(m_Args[i], val);
+                }
+                else
+                {
+                    if (i + 1 >= m_Args.size())
+                        continue;
 
-                indieces.insert(i + 1);
-                i++;
+                    auto [n_has, _, __] = is_option(m_Options, m_Args[i + 1]);
+
+                    if (!n_has)
+                        update_value(m_Args[i], m_Args[i + 1]);
+
+                    indieces.insert(i + 1);
+                    i++;
+                }
             }
 
             auto command_opt = command_by_id(m_Args[command_idx]);
@@ -708,24 +747,41 @@ namespace psap // Paul's Simple Argument Parser
 
             for (std::size_t i = command_idx + 1; i < m_Args.size(); i++)
             {
-                auto [c_has, c_flag] = has_option(command.m_Options, m_Args[i]);
+                auto [c_has, c_flag, c_contains_val] = is_option(command.m_Options, m_Args[i]);
 
                 if (!c_has)
                     continue;
 
-                if (c_flag || i + 1 >= m_Args.size())
+                if (c_flag)
                 {
                     indieces.insert(i);
                     continue;
                 }
 
-                auto [n_has, _] = has_option(command.m_Options, m_Args[i + 1]);
+                if (c_contains_val)
+                {
+                    auto val = m_Args[i].substr(m_Args[i].find_first_of('=') + 1);
 
-                if (!n_has)
-                    command[m_Args[i]] = m_Args[i + 1];
+                    command[m_Args[i]] = val;
 
-                indieces.insert({i, i + (n_has ? 0 : 1)});
-                i++;
+                    indieces.insert(i);
+                }
+                else
+                {
+                    if (i + 1 >= m_Args.size())
+                    {
+                        indieces.insert(i);
+                        continue;
+                    }
+
+                    auto [n_has, _, __] = is_option(command.m_Options, m_Args[i + 1]);
+
+                    if (!n_has)
+                        command[m_Args[i]] = m_Args[i + 1];
+
+                    indieces.insert({i, i + (n_has ? 0 : 1)});
+                    i++;
+                }
             }
 
             auto it = std::remove_if(m_Args.begin(), m_Args.end(), [&](const std::string &arg)
@@ -746,7 +802,7 @@ namespace psap // Paul's Simple Argument Parser
                 {
                     std::cout << color::green("Options:\n");
                     for (const auto &opt : m_Options)
-                        std::cout << "    " << string::join_strings(opt.identifier) << (!opt.flag ? " <value>" : "") << std::setw((m_MaxLength + 1 + m_Conf.padding) - (std::size_t)opt) << " " << opt.help << "\n";
+                        std::cout << "    " << string::join_strings(opt.identifier) << (!opt.flag ? (m_Conf.value_style == ValueStyle::EqualSign ? "=<value>" : " <value>") : "") << std::setw((m_MaxLength + 1 + m_Conf.padding) - (std::size_t)opt) << " " << opt.help << "\n";
 
                     std::cout << "\n";
                 }
@@ -805,7 +861,7 @@ namespace psap // Paul's Simple Argument Parser
                     std::cout
                         << "    "
                         << string::join_strings(opt.identifier)
-                        << (opt.flag ? "" : " <value>")
+                        << (opt.flag ? "" : (m_Conf.value_style == ValueStyle::Space ? "=<value>" : " <value>"))
                         << std::setw((command.m_MaxLength + 1 + m_Conf.padding) - (std::size_t)opt)
                         << " "
                         << opt.help
@@ -926,29 +982,62 @@ namespace psap // Paul's Simple Argument Parser
                 m_MaxLength = length;
         }
 
-        void update_value(std::string_view option, const std::string &value) noexcept
+        void update_value(const std::string &option, const std::string &value) noexcept
         {
             auto it = std::find_if(m_Options.begin(), m_Options.end(), [&option](const Option &opt)
                                    { return std::any_of(opt.identifier.begin(), opt.identifier.end(), [&option](const std::string &id)
-                                                        { return option == id; }); });
+                                                        { return string::starts_with(option, id); }); });
             if (it == m_Options.end())
                 return;
 
             it->value = value;
         }
 
-        std::pair<bool, bool> has_option(std::vector<Option> &options, std::string_view option)
+        std::tuple<bool, bool, bool> is_option(std::vector<Option> &options, const std::string &option)
         {
-            auto contains_option = [&option](const Option &opt)
-            { return std::find(opt.identifier.begin(), opt.identifier.end(), option) != opt.identifier.end(); };
+            const auto &style = m_Conf.value_style;
 
-            if (auto opt = std::find_if(options.begin(), options.end(), contains_option); opt != options.end())
+            for (auto &opt : options)
             {
-                opt->active = true;
-                return std::make_pair(true, opt->flag);
+                for (auto &id : opt.identifier)
+                {
+                    if (!string::starts_with(option, id))
+                        continue;
+
+                    if (opt.flag)
+                    {
+                        opt.active = true;
+                        return std::make_tuple(true, true, false);
+                    }
+
+                    if (id.length() == option.length())
+                    {
+                        if (style == ValueStyle::EqualSign)
+                            continue;
+
+                        opt.active = true;
+
+                        return std::make_tuple(true, false, false);
+                    }
+                    else
+                    {
+                        if (style == ValueStyle::Space)
+                            continue;
+
+                        if (option.at(id.length()) != '=')
+                            continue;
+
+                        if (option.length() - id.length() < 2)
+                            continue;
+
+                        opt.active = true;
+
+                        return std::make_tuple(true, false, true);
+                    }
+                }
             }
 
-            return std::make_pair(false, false);
+            return std::make_tuple(false, false, false);
         }
 
         bool is_command(std::string_view identifier) const noexcept

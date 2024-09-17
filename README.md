@@ -12,7 +12,8 @@ Example 1:
 
 int main(int argc, char* argv[])
 {
-    psap::ArgParser parser{"project_name"};
+    psap::ArgParser parser{
+        psap::ParserConf{"project_name", 4, true, psap::ValueStyle::Both}};
 
     auto HELP_ACTION = 
         [](const psap::ArgParser &parser, const psap::Command &cmd)
@@ -42,7 +43,8 @@ See 'project_name help <command>' for more information on a specific command.
 
 Example 2:
 ```c++
-    psap::ArgParser parser{"project_name"};
+    psap::ArgParser parser{
+        psap::ParserConf{"project_name", 4, true, psap::ValueStyle::Both}};
 
     auto RUN_ACTION = 
         [](const psap::ArgParser &parser, const psap::Command &cmd)
