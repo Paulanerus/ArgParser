@@ -399,6 +399,39 @@ namespace internal {
             return std::nullopt;
         }
     }
+
+    template<typename T>
+    inline std::optional<T> convert_value(const std::string& value) noexcept
+    {
+        if constexpr (std::is_convertible_v<std::string, T>)
+            return static_cast<T>(value);
+        else if constexpr (std::is_convertible_v<std::wstring, T>)
+            return static_cast<T>(value);
+        else if constexpr (std::is_same_v<T, std::int8_t>)
+            return static_cast<int8_t>(value[0]);
+        else if constexpr (std::is_same_v<T, std::uint8_t>)
+            return static_cast<uint8_t>(value[0]);
+        else if constexpr (std::is_same_v<T, std::int16_t>)
+            return internal::try_catch([&value] { return static_cast<std::int16_t>(std::stoi(value)); });
+        else if constexpr (std::is_same_v<T, std::uint16_t>)
+            return internal::try_catch([&value] { return static_cast<std::uint16_t>(std::stoul(value)); });
+        else if constexpr (std::is_same_v<T, std::int32_t>)
+            return internal::try_catch([&value] { return std::stoi(value); });
+        else if constexpr (std::is_same_v<T, std::uint32_t>)
+            return internal::try_catch([&value] { return static_cast<std::uint32_t>(std::stoul(value)); });
+        else if constexpr (std::is_same_v<T, std::int64_t>)
+            return internal::try_catch([&value] { return std::stol(value); });
+        else if constexpr (std::is_same_v<T, std::uint64_t>)
+            return internal::try_catch([&value] { return std::stoul(value); });
+        else if constexpr (std::is_same_v<T, float>)
+            return internal::try_catch([&value] { return std::stof(value); });
+        else if constexpr (std::is_same_v<T, double>)
+            return internal::try_catch([&value] { return std::stod(value); });
+        else if constexpr (std::is_same_v<T, long double>)
+            return internal::try_catch([&value] { return std::stold(value); });
+        else
+            return std::nullopt;
+    }
 }
 
 enum class ValueStyle {
@@ -523,37 +556,7 @@ public:
         if (it == m_Options.end() || it->value.empty())
             return std::nullopt;
 
-        // Doesn't look that good.. ~Paul
-        if constexpr (std::is_convertible_v<std::string, T>)
-            return static_cast<T>(it->value);
-        else if constexpr (std::is_convertible_v<std::wstring, T>)
-            return static_cast<T>(it->value);
-        else if constexpr (std::is_same_v<T, std::int8_t>)
-            return static_cast<int8_t>(it->value[0]);
-        else if constexpr (std::is_same_v<T, std::uint8_t>)
-            return static_cast<uint8_t>(it->value[0]);
-        else if constexpr (std::is_same_v<T, std::int16_t>)
-            return internal::try_catch([&it] { return static_cast<std::int16_t>(std::stoi(it->value)); });
-        else if constexpr (std::is_same_v<T, std::uint16_t>)
-            return internal::try_catch([&it] { return static_cast<std::uint16_t>(std::stoul(it->value)); });
-        else if constexpr (std::is_same_v<T, std::int32_t>)
-            return internal::try_catch([&it] { return std::stoi(it->value); });
-        else if constexpr (std::is_same_v<T, std::uint32_t>)
-            return internal::try_catch([&it] { return static_cast<std::uint32_t>(std::stoul(it->value)); });
-        else if constexpr (std::is_same_v<T, std::int64_t>)
-            return internal::try_catch([&it] { return std::stol(it->value); });
-        else if constexpr (std::is_same_v<T, std::uint64_t>)
-            return internal::try_catch([&it] { return std::stoul(it->value); });
-        else if constexpr (std::is_same_v<T, float>)
-            return internal::try_catch([&it] { return std::stof(it->value); });
-        else if constexpr (std::is_same_v<T, double>)
-            return internal::try_catch([&it] { return std::stod(it->value); });
-        else if constexpr (std::is_same_v<T, long double>)
-            return internal::try_catch([&it] { return std::stold(it->value); });
-        // else if constexpr (std::is_constructible_v<T, std::string>)
-        //     return T(it->value);
-        else
-            return std::nullopt;
+        return internal::convert_value<T>(it->value);
     }
 
     friend ArgParser;
@@ -864,34 +867,7 @@ public:
         if (it == m_Options.end() || it->value.empty())
             return std::nullopt;
 
-        if constexpr (std::is_convertible_v<std::string, T>)
-            return static_cast<T>(it->value);
-        else if constexpr (std::is_convertible_v<std::wstring, T>)
-            return static_cast<T>(it->value);
-        else if constexpr (std::is_same_v<T, std::int8_t>)
-            return static_cast<std::int8_t>(it->value[0]);
-        else if constexpr (std::is_same_v<T, std::uint8_t>)
-            return static_cast<std::uint8_t>(it->value[0]);
-        else if constexpr (std::is_same_v<T, std::int16_t>)
-            return internal::try_catch([&it] { return static_cast<std::int16_t>(std::stoi(it->value)); });
-        else if constexpr (std::is_same_v<T, std::uint16_t>)
-            return internal::try_catch([&it] { return static_cast<std::uint16_t>(std::stoul(it->value)); });
-        else if constexpr (std::is_same_v<T, std::int32_t>)
-            return internal::try_catch([&it] { return std::stoi(it->value); });
-        else if constexpr (std::is_same_v<T, std::uint32_t>)
-            return internal::try_catch([&it] { return static_cast<std::uint32_t>(std::stoul(it->value)); });
-        else if constexpr (std::is_same_v<T, std::int64_t>)
-            return internal::try_catch([&it] { return std::stol(it->value); });
-        else if constexpr (std::is_same_v<T, std::uint64_t>)
-            return internal::try_catch([&it] { return std::stoul(it->value); });
-        else if constexpr (std::is_same_v<T, float>)
-            return internal::try_catch([&it] { return std::stof(it->value); });
-        else if constexpr (std::is_same_v<T, double>)
-            return internal::try_catch([&it] { return std::stod(it->value); });
-        else if constexpr (std::is_same_v<T, long double>)
-            return internal::try_catch([&it] { return std::stold(it->value); });
-        else
-            return std::nullopt;
+        return internal::convert_value<T>(it->value);
     }
 
 private:
