@@ -353,7 +353,7 @@ namespace string {
         return stream.str();
     }
 
-    inline std::size_t calc_levenshtein_distance(std::string_view src, const std::string_view& target) noexcept
+    inline std::size_t calc_levenshtein_distance(std::string_view src, std::string_view target) noexcept
     {
         if (src == target)
             return 0;
@@ -379,20 +379,12 @@ namespace string {
         return distance[target.length()];
     }
 
-    inline bool starts_with(const std::string& str, const std::string& start) noexcept
+    inline bool starts_with(std::string_view str, std::string_view start) noexcept
     {
 #if AP_CXX_STD_VER >= AP_CXX20
         return str.starts_with(start);
 #else
-        if (str.length() < start.length())
-            return false;
-
-        for (std::size_t i {}; i < start.length(); i++) {
-            if (str[i] != start[i])
-                return false;
-        }
-
-        return true;
+        return str.size() >= start.size() && std::equal(start.begin(), start.end(), str.begin());
 #endif // AP_CXX_STD_VER >= AP_CXX20
     }
 }
@@ -456,7 +448,7 @@ struct Option {
     friend Command;
 
 private:
-    operator std::size_t() const noexcept
+    std::size_t length() const noexcept
     {
         std::size_t size {};
         for (auto& id : identifier)
@@ -481,7 +473,7 @@ public:
 
     Command& option(Option&& arg) noexcept
     {
-        std::size_t length = arg;
+        std::size_t length = arg.length();
 
         if (length > m_MaxLength)
             m_MaxLength = length;
@@ -598,7 +590,7 @@ private:
         return it->value;
     }
 
-    operator std::size_t() const noexcept
+    std::size_t length() const noexcept
     {
         std::size_t size {};
         for (auto& id : m_Identifier)
@@ -624,14 +616,14 @@ public:
 
         Command& cmd = m_Commands.emplace_back(std::move(identifier));
 
-        update_length(cmd);
+        update_length(cmd.length());
 
         return cmd;
     }
 
     ArgParser& option(Option&& option)
     {
-        update_length(option);
+        update_length(option.length());
 
         m_Options.emplace_back(std::move(option));
         return *this;
@@ -654,7 +646,6 @@ public:
 
         std::size_t command_idx {};
         std::unordered_set<std::size_t> indieces;
-
         for (std::size_t i {}; i < m_Args.size(); i++) {
             if (is_command(m_Args[i])) {
                 indieces.insert(i);
@@ -755,7 +746,7 @@ public:
             if (!m_Options.empty()) {
                 std::cout << color::green("Options:\n");
                 for (const auto& opt : m_Options)
-                    std::cout << "    " << string::join_strings(opt.identifier) << (!opt.flag ? (m_Conf.value_style == ValueStyle::EqualSign ? "=<value>" : " <value>") : "") << std::setw((m_MaxLength + 1 + m_Conf.padding) - (std::size_t)opt) << " " << opt.help << "\n";
+                    std::cout << "    " << string::join_strings(opt.identifier) << (!opt.flag ? (m_Conf.value_style == ValueStyle::EqualSign ? "=<value>" : " <value>") : "") << std::setw((m_MaxLength + 1 + m_Conf.padding) - opt.length()) << " " << opt.help << "\n";
 
                 std::cout << "\n";
             }
@@ -763,7 +754,7 @@ public:
             std::cout << color::cyan("Commands:\n");
 
             for (const auto& cmd : m_Commands)
-                std::cout << "    " << string::join_strings(cmd.m_Identifier) << std::setw((m_MaxLength + 1 + m_Conf.padding) - (std::size_t)cmd) << " " << cmd.m_Help << "\n";
+                std::cout << "    " << string::join_strings(cmd.m_Identifier) << std::setw((m_MaxLength + 1 + m_Conf.padding) - cmd.length()) << " " << cmd.m_Help << "\n";
 
             std::cout << "\n";
 
@@ -813,7 +804,7 @@ public:
                     << "    "
                     << string::join_strings(opt.identifier)
                     << (opt.flag ? "" : (m_Conf.value_style == ValueStyle::Space ? "=<value>" : " <value>"))
-                    << std::setw((command.m_MaxLength + 1 + m_Conf.padding) - (std::size_t)opt)
+                    << std::setw((command.m_MaxLength + 1 + m_Conf.padding) - opt.length())
                     << " "
                     << opt.help
                     << "\n"
@@ -914,7 +905,7 @@ private:
 
     std::size_t m_MaxLength {};
 
-    void update_length(const std::size_t& length) noexcept
+    void update_length(std::size_t length) noexcept
     {
         if (length > m_MaxLength)
             m_MaxLength = length;
