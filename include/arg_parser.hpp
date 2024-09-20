@@ -718,7 +718,7 @@ public:
                     continue;
 
                 if (has_value) {
-                    
+
                     auto val = m_Args[i].substr(m_Args[i].find_first_of('=') + 1);
 
                     if (command.has_value())
