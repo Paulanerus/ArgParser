@@ -71,10 +71,5 @@ Documentation can be found in the [wiki](https://github.com/Paulanerus/ArgParser
 
 ArgParser has no other dependencies.
 
-## Todos
-+ Remove '--' and '-' specifier
-+ Debug logging
-+ Support custom types with get
-
 ## Support
 If you encounter any issues or have any questions about this project, don't hesitate to reach out to me. You can [open an issue](https://github.com/Paulanerus/ArgParser/issues) on GitHub.
