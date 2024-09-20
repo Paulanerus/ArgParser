@@ -451,6 +451,13 @@ namespace internal {
     }
 }
 
+enum class UnknownOptionPolicy {
+    Ignore,
+    ReportIgnore,
+    Remove,
+    ReportRemove,
+};
+
 enum class ValueStyle {
     Space,
     EqualSign,
@@ -462,6 +469,7 @@ struct ParserConf {
     std::size_t padding { 4 };
     bool color_output { true };
     ValueStyle value_style { ValueStyle::Both };
+    UnknownOptionPolicy unknown_option_policy { UnknownOptionPolicy::Ignore };
 };
 
 class ArgParser;
@@ -681,8 +689,28 @@ public:
 
                 auto [option_found, is_flag, has_value] = is_option(command.has_value() ? command->m_Options : m_Options, m_Args[i]);
 
-                if (!option_found)
-                    continue; // FIXME: report that the option was not declared via UnknownOptionPolicy
+                if (!option_found) {
+                    if (first_non_flag_idx != m_Args.size() && !command.has_value())
+                        continue;
+
+                    switch (m_Conf.unknown_option_policy) {
+                    case UnknownOptionPolicy::Remove:
+                        indices.insert(i);
+
+                        continue;
+                    case UnknownOptionPolicy::ReportIgnore:
+                        std::cout << color::light_yellow("Warning:") << " The Option: '" << m_Args[i] << "' is not available." << std::endl;
+
+                        continue;
+                    case UnknownOptionPolicy::ReportRemove:
+                        std::cout << color::light_yellow("Warning:") << " The Option: '" << m_Args[i] << "' is not available." << std::endl;
+                        indices.insert(i);
+
+                        continue;
+                    default:
+                        continue;
+                    }
+                }
 
                 indices.insert(i);
 
@@ -690,6 +718,7 @@ public:
                     continue;
 
                 if (has_value) {
+                    
                     auto val = m_Args[i].substr(m_Args[i].find_first_of('=') + 1);
 
                     if (command.has_value())
@@ -700,8 +729,6 @@ public:
 
                     if (i + 1 >= m_Args.size())
                         continue; // FIXME: report on missing value.
-
-                    std::cout << "Next: " << m_Args[i + 1] << std::endl;
 
                     auto [next_option_found, _, __] = is_option(command.has_value() ? command->m_Options : m_Options, m_Args[i + 1]);
 
@@ -733,7 +760,7 @@ public:
         }
 
         if (!command.has_value()) {
-            std::cout << "Unknown command '" << color::light_red(m_Args[first_non_flag_idx]) << "'\n";
+            std::cout << color::light_red("Error:") << " Unknown command '" << color::light_red(m_Args[first_non_flag_idx]) << "'\n";
 
             auto similar = get_similar(m_Args[first_non_flag_idx]);
 
