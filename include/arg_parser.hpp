@@ -387,6 +387,23 @@ namespace string {
         return str.size() >= start.size() && std::equal(start.begin(), start.end(), str.begin());
 #endif // AP_CXX_STD_VER >= AP_CXX20
     }
+
+    inline void convert_str_to_lower(std::string& str) noexcept
+    {
+        std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) { return std::tolower(c); });
+    }
+
+    inline void convert_str_to_lower_partly(std::string& str, std::size_t start = 0, std::size_t end = std::numeric_limits<std::size_t>::max()) noexcept
+    {
+        std::transform(str.begin() + (start >= end || start >= str.length() ? 0 : start), (end >= str.length() ? str.end() : str.begin() + end), str.begin() + (start >= end || start >= str.length() ? 0 : start), [](unsigned char c) { return std::tolower(c); });
+    }
+
+    inline std::string copy_str_to_lower(std::string str) noexcept
+    {
+        std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) { return std::tolower(c); });
+
+        return str;
+    }
 }
 
 namespace internal {
@@ -619,14 +636,18 @@ public:
 
         Command& cmd = m_Commands.emplace_back(std::move(identifier));
 
-        update_length(cmd.length());
+        auto length = cmd.length();
+        if (length > m_MaxLength)
+            m_MaxLength = length;
 
         return cmd;
     }
 
     ArgParser& option(Option&& option)
     {
-        update_length(option.length());
+        auto length = option.length();
+        if (length > m_MaxLength)
+            m_MaxLength = length;
 
         m_Options.emplace_back(std::move(option));
         return *this;
@@ -645,53 +666,76 @@ public:
 
         m_Args.assign(argv + start, argv + argc);
 
-        std::for_each(m_Args.begin(), m_Args.end(), [](std::string& arg) { std::transform(arg.begin(), arg.end(), arg.begin(), [](auto c) { return std::tolower(c); }); });
+        std::optional<Command> command;
+        std::unordered_set<std::size_t> indices;
+        std::size_t first_non_flag_idx = m_Args.size();
 
-        std::size_t command_idx {};
-        std::unordered_set<std::size_t> indieces;
         for (std::size_t i {}; i < m_Args.size(); i++) {
-            if (is_command(m_Args[i])) {
-                indieces.insert(i);
-                command_idx = i;
-                break;
-            }
 
-            auto [has, flag, contains_val] = is_option(m_Options, m_Args[i]);
+            if (string::starts_with(m_Args[i], "-")) {
 
-            indieces.insert(i);
+                if (m_Conf.value_style == ValueStyle::Space)
+                    string::convert_str_to_lower(m_Args[i]);
+                else
+                    string::convert_str_to_lower_partly(m_Args[i], 0, m_Args[i].find_first_of("="));
 
-            if (!has) {
-                command_idx = i;
-                break;
-            }
+                auto [option_found, is_flag, has_value] = is_option(command.has_value() ? command->m_Options : m_Options, m_Args[i]);
 
-            if (flag)
-                continue;
+                if (!option_found)
+                    continue; // FIXME: report that the option was not declared via UnknownOptionPolicy
 
-            if (contains_val) {
-                auto val = m_Args[i].substr(m_Args[i].find_first_of('=') + 1);
+                indices.insert(i);
 
-                update_value(m_Args[i], val);
-            } else {
-                if (i + 1 >= m_Args.size())
+                if (is_flag)
                     continue;
 
-                auto [n_has, _, __] = is_option(m_Options, m_Args[i + 1]);
+                if (has_value) {
+                    auto val = m_Args[i].substr(m_Args[i].find_first_of('=') + 1);
 
-                if (!n_has)
-                    update_value(m_Args[i], m_Args[i + 1]);
+                    if (command.has_value())
+                        (*command)[m_Args[i]] = val;
+                    else
+                        update_value(m_Args[i], val);
+                } else {
 
-                indieces.insert(i + 1);
-                i++;
+                    if (i + 1 >= m_Args.size())
+                        continue; // FIXME: report on missing value.
+
+                    std::cout << "Next: " << m_Args[i + 1] << std::endl;
+
+                    auto [next_option_found, _, __] = is_option(command.has_value() ? command->m_Options : m_Options, m_Args[i + 1]);
+
+                    if (next_option_found)
+                        continue; // FIXME: report on missing value.
+
+                    if (command.has_value())
+                        (*command)[m_Args[i]] = m_Args[i + 1];
+                    else
+                        update_value(m_Args[i], m_Args[i + 1]);
+
+                    indices.insert(i + 1);
+                    i++;
+                }
+            } else {
+
+                if (!command.has_value()) {
+                    command = find_command_by_id(m_Args[i]);
+
+                    if (command.has_value()) {
+                        indices.insert(i);
+                        continue;
+                    }
+                }
+
+                if (i < first_non_flag_idx)
+                    first_non_flag_idx = i;
             }
         }
 
-        auto command_opt = command_by_id(m_Args[command_idx]);
+        if (!command.has_value()) {
+            std::cout << "Unknown command '" << color::light_red(m_Args[first_non_flag_idx]) << "'\n";
 
-        if (!command_opt.has_value()) {
-            std::cout << "Unknown command '" << color::light_red(m_Args[command_idx]) << "'\n";
-
-            auto similar = get_similar(m_Args[command_idx]);
+            auto similar = get_similar(m_Args[first_non_flag_idx]);
 
             if (!similar.empty())
                 std::cout << "Did you mean: '" << color::green(similar) << "'?" << std::endl;
@@ -699,46 +743,11 @@ public:
             return;
         }
 
-        auto command = command_opt.value();
+        auto it = std::remove_if(m_Args.begin(), m_Args.end(), [&](const std::string& arg) { return indices.find(&arg - &m_Args[0]) != indices.end(); });
 
-        for (std::size_t i = command_idx + 1; i < m_Args.size(); i++) {
-            auto [c_has, c_flag, c_contains_val] = is_option(command.m_Options, m_Args[i]);
+        m_Args.erase(it, m_Args.end());
 
-            if (!c_has)
-                continue;
-
-            if (c_flag) {
-                indieces.insert(i);
-                continue;
-            }
-
-            if (c_contains_val) {
-                auto val = m_Args[i].substr(m_Args[i].find_first_of('=') + 1);
-
-                command[m_Args[i]] = val;
-
-                indieces.insert(i);
-            } else {
-                if (i + 1 >= m_Args.size()) {
-                    indieces.insert(i);
-                    continue;
-                }
-
-                auto [n_has, _, __] = is_option(command.m_Options, m_Args[i + 1]);
-
-                if (!n_has)
-                    command[m_Args[i]] = m_Args[i + 1];
-
-                indieces.insert({ i, i + (n_has ? 0 : 1) });
-                i++;
-            }
-        }
-
-        auto it = std::remove_if(m_Args.begin(), m_Args.end(), [&](const std::string& arg) { return indieces.find(&arg - &m_Args[0]) != indieces.end(); });
-
-        m_Args.erase(it);
-
-        command.execute(*this);
+        command->execute(*this);
     }
 
     void print(std::string_view identifier) const noexcept
@@ -773,7 +782,7 @@ public:
             return;
         }
 
-        auto command_result = command_by_id(identifier);
+        auto command_result = find_command_by_id(identifier);
 
         if (!command_result) {
             std::cout
@@ -881,12 +890,6 @@ private:
 
     std::size_t m_MaxLength {};
 
-    void update_length(std::size_t length) noexcept
-    {
-        if (length > m_MaxLength)
-            m_MaxLength = length;
-    }
-
     void update_value(const std::string& option, const std::string& value) noexcept
     {
         auto it = std::find_if(m_Options.begin(), m_Options.end(), [&option](const Option& opt) { return std::any_of(opt.identifier.begin(), opt.identifier.end(), [&option](const std::string& id) { return string::starts_with(option, id); }); });
@@ -896,7 +899,7 @@ private:
         it->value = value;
     }
 
-    std::tuple<bool, bool, bool> is_option(std::vector<Option>& options, const std::string& option)
+    std::tuple<bool, bool, bool> is_option(std::vector<Option>& options, std::string_view option)
     {
         const auto& style = m_Conf.value_style;
 
@@ -937,24 +940,14 @@ private:
         return std::make_tuple(false, false, false);
     }
 
-    bool is_command(std::string_view identifier) const noexcept
+    std::optional<Command> find_command_by_id(std::string_view identifier) const noexcept
     {
         for (auto& cmd : m_Commands) {
             for (auto& id : cmd.m_Identifier) {
                 if (identifier == id)
-                    return true;
+                    return cmd;
             }
         }
-
-        return false;
-    }
-
-    std::optional<Command> command_by_id(std::string_view identifier) const noexcept
-    {
-        auto has_identifier = [&](const Command& cmd) { return std::any_of(cmd.m_Identifier.begin(), cmd.m_Identifier.end(), [identifier](const auto& id) { return id == identifier; }); };
-
-        if (auto cmd = std::find_if(m_Commands.begin(), m_Commands.end(), has_identifier); cmd != m_Commands.end())
-            return *cmd;
 
         return std::nullopt;
     }
