@@ -12,7 +12,7 @@
 #    define AP_MAYBE_UNUSED [[maybe_unused]]
 #endif
 
-inline auto HELP_ACTION = [](psap::ArgParser const& parser, AP_MAYBE_UNUSED const auto& _) {
+inline auto HELP_ACTION = [](const psap::ArgParser& parser, AP_MAYBE_UNUSED const auto& _) {
     parser(parser[0]);
 };
 
@@ -40,7 +40,7 @@ inline auto BUILD_ACTION = [](AP_MAYBE_UNUSED const auto& _, AP_MAYBE_UNUSED con
     std::cout << "Build" << std::endl;
 };
 
-inline auto RUN_ACTION = [](psap::ArgParser const& parser, psap::Command const& cmd) {
+inline auto RUN_ACTION = [](const psap::ArgParser& parser, const psap::Command& cmd) {
     auto val = parser.get<int>("--value").value_or(32);
 
     std::cout << "Global value: " << val << std::endl;
