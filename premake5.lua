@@ -19,13 +19,7 @@ project "ArgParser"
         defines { "DEBUG" }
         symbols "On"
 
-        filter "system:linux"
-            linkoptions{"-fuse-ld=mold"}
-
     filter "configurations:Release"
         defines { "NDEBUG" }
         optimize "On"
         symbols "Off"
-
-        filter "system:linux"
-            linkoptions{"-fuse-ld=mold"}
