@@ -468,6 +468,7 @@ struct ParserConf {
     std::string name;
     std::size_t padding { 4 };
     bool color_output { true };
+    bool flag_chaining { true };
     ValueStyle value_style { ValueStyle::Both };
     UnknownOptionPolicy unknown_option_policy { UnknownOptionPolicy::Ignore };
 };
@@ -686,6 +687,11 @@ public:
                     string::convert_str_to_lower(m_Args[i]);
                 else
                     string::convert_str_to_lower_partly(m_Args[i], 0, m_Args[i].find_first_of("="));
+
+                if (m_Conf.flag_chaining && handle_flag_chaining(command.has_value() ? command->m_Options : m_Options, m_Args[i])) {
+                    indices.insert(i);
+                    continue;
+                }
 
                 auto [option_found, is_flag, has_value] = is_option(command.has_value() ? command->m_Options : m_Options, m_Args[i]);
 
@@ -924,6 +930,37 @@ private:
             return;
 
         it->value = value;
+    }
+
+    bool handle_flag_chaining(std::vector<Option>& options, std::string_view arg) noexcept
+    {
+        if (arg.length() < 3 || string::starts_with(arg, "--"))
+            return false;
+
+        std::size_t idx { 0 };
+        for (auto& opt : options) {
+
+            if (!opt.flag)
+                continue;
+
+            for (auto& id : opt.identifier) {
+
+                if (id.length() != 2)
+                    continue;
+
+                if (arg.at(idx + 1) != id.at(1))
+                    continue;
+
+                opt.active = true;
+
+                idx++;
+
+                if (idx + 1 >= arg.length())
+                    break;
+            }
+        }
+
+        return idx > 0;
     }
 
     std::tuple<bool, bool, bool> is_option(std::vector<Option>& options, std::string_view option)
