@@ -11,8 +11,8 @@ int main(int argc, char* argv[])
         ParserConf { "tram", 4, true, true, ValueStyle::Both, UnknownOptionPolicy::ReportRemove }
     };
 
-    parser.option(Option::Flag({ "--test", "-t" }, "Global test flag"));
-    parser.option(Option::Value({ "--value", "-v" }, "Global test value"));
+    parser.option(make_flag({ "--test", "-t" }, "Global test flag"));
+    parser.option(make_value({ "--value", "-v" }, "Global test value"));
 
     parser.command("help", "h")
         .help("Shows help.")
@@ -25,8 +25,8 @@ int main(int argc, char* argv[])
 
     parser.command("add", "a")
         .help("Adds a new dependency.")
-        .option(Option::Value({ "--branch", "-b" }, "Select a specific branch."))
-        .option(Option::Flag({ "--link", "-l" }, "Links the specified library."))
+        .option(make_value({ "--branch", "-b" }, "Select a specific branch."))
+        .option(make_flag({ "--link", "-l" }, "Links the specified library."))
         .action(ADD_ACTION);
 
     parser.command("remove", "rm", "delete", "del")
@@ -35,14 +35,14 @@ int main(int argc, char* argv[])
 
     parser.command("build", "b")
         .help("Builds the project.")
-        .option(Option::Flag({ "--debug", "-d" }, "Runs debug build."))
-        .option(Option::Flag({ "--release", "-r" }, "Runs release build."))
+        .option(make_flag({ "--debug", "-d" }, "Runs debug build."))
+        .option(make_flag({ "--release", "-r" }, "Runs release build."))
         .action(BUILD_ACTION);
 
     parser.command("run", "r")
         .help("Executes the project and perform a build, if needed.")
-        .option(Option::Flag({ "--debug", "-d" }, "Runs debug build."))
-        .option(Option::Flag({ "--release", "-r" }, "Runs release build."))
+        .option(make_flag({ "--debug", "-d" }, "Runs debug build."))
+        .option(make_flag({ "--release", "-r" }, "Runs release build."))
         .action(RUN_ACTION);
 
     parser.parse(argv, argc);

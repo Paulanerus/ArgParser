@@ -488,20 +488,6 @@ struct Option {
 
     std::string value;
 
-    static Option Flag(std::initializer_list<std::string>&& identifier, std::string&& help_txt)
-    {
-        return Option {
-            std::move(identifier), std::move(help_txt), true, false, ""
-        };
-    }
-
-    static Option Value(std::initializer_list<std::string>&& identifier, std::string&& help_txt)
-    {
-        return Option {
-            std::move(identifier), std::move(help_txt), false, false, ""
-        };
-    }
-
     friend ArgParser;
 
     friend Command;
@@ -516,6 +502,20 @@ private:
         return size - (flag ? 2 : -6);
     }
 };
+
+inline Option make_flag(std::initializer_list<std::string>&& identifier, std::string&& help_txt) noexcept
+{
+    return Option {
+        std::move(identifier), std::move(help_txt), true, false, ""
+    };
+}
+
+inline Option make_value(std::initializer_list<std::string>&& identifier, std::string&& help_txt) noexcept
+{
+    return Option {
+        std::move(identifier), std::move(help_txt), false, false, ""
+    };
+}
 
 class Command {
 public:
@@ -691,7 +691,7 @@ public:
                 auto [option_found, is_flag, has_value] = is_option(command.has_value() ? command->m_Options : m_Options, m_Args[i]);
 
                 if (!option_found) {
-                    
+
                     if (m_Conf.flag_chaining && handle_flag_chaining(command.has_value() ? command->m_Options : m_Options, m_Args[i])) {
                         indices.insert(i);
                         continue;
