@@ -766,6 +766,9 @@ public:
         }
 
         if (!command.has_value()) {
+            if (first_non_flag_idx == m_Args.size())
+                return;
+
             std::cout << color::light_red("Error:") << " Unknown command '" << color::light_red(m_Args[first_non_flag_idx]) << "'\n";
 
             auto similar = get_similar(m_Args[first_non_flag_idx]);
