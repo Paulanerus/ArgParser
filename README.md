@@ -13,7 +13,7 @@ Example 1:
 int main(int argc, char* argv[])
 {
     psap::ArgParser parser{
-        psap::ParserConf{"project_name", 4, true, psap::ValueStyle::Both, psap::UnknownOptionPolicy::ReportRemove}};
+        psap::ParserConf{"project_name", 4, true, true, psap::ValueStyle::Both, psap::UnknownOptionPolicy::ReportRemove}};
 
     auto HELP_ACTION = 
         [](const psap::ArgParser &parser, const psap::Command &cmd)
@@ -44,7 +44,7 @@ See 'project_name help <command>' for more information on a specific command.
 Example 2:
 ```c++
     psap::ArgParser parser{
-        psap::ParserConf{"project_name", 4, true, psap::ValueStyle::Both, psap::UnknownOptionPolicy::ReportRemove}};
+        psap::ParserConf{"project_name", 4, true, true, psap::ValueStyle::Both, psap::UnknownOptionPolicy::ReportRemove}};
 
     auto RUN_ACTION = 
         [](const psap::ArgParser &parser, const psap::Command &cmd)
@@ -54,8 +54,8 @@ Example 2:
 
     parser.command("run", "r")
         .help("Runs something.")
-        .option(Option::Value({"--target", "-t"}, "Select a Target."))
-        .option(Option::Flag({"--debug", "-d"}, "Runs in debug."))
+        .option(psap::make_value({"--target", "-t"}, "Select a Target."))
+        .option(psap::make_flag({"--debug", "-d"}, "Runs in debug."))
         .action(RUN_ACTION);
 
     //More commands to come
