@@ -468,6 +468,7 @@ struct ParserConf {
     std::string name;
     std::size_t padding { 4 };
     bool color_output { true };
+    bool flag_chaining { true };
     ValueStyle value_style { ValueStyle::Both };
     UnknownOptionPolicy unknown_option_policy { UnknownOptionPolicy::Ignore };
 };
@@ -690,6 +691,12 @@ public:
                 auto [option_found, is_flag, has_value] = is_option(command.has_value() ? command->m_Options : m_Options, m_Args[i]);
 
                 if (!option_found) {
+                    
+                    if (m_Conf.flag_chaining && handle_flag_chaining(command.has_value() ? command->m_Options : m_Options, m_Args[i])) {
+                        indices.insert(i);
+                        continue;
+                    }
+
                     if (first_non_flag_idx != m_Args.size() && !command.has_value())
                         continue;
 
@@ -699,11 +706,11 @@ public:
 
                         continue;
                     case UnknownOptionPolicy::ReportIgnore:
-                        std::cout << color::light_yellow("Warning:") << " The Option: '" << m_Args[i] << "' is not available." << std::endl;
+                        std::cout << color::light_yellow("Warning:") << " The option: '" << m_Args[i] << "' is not available." << std::endl;
 
                         continue;
                     case UnknownOptionPolicy::ReportRemove:
-                        std::cout << color::light_yellow("Warning:") << " The Option: '" << m_Args[i] << "' is not available." << std::endl;
+                        std::cout << color::light_yellow("Warning:") << " The option: '" << m_Args[i] << "' is not available." << std::endl;
                         indices.insert(i);
 
                         continue;
@@ -760,6 +767,9 @@ public:
         }
 
         if (!command.has_value()) {
+            if (first_non_flag_idx == m_Args.size())
+                return;
+
             std::cout << color::light_red("Error:") << " Unknown command '" << color::light_red(m_Args[first_non_flag_idx]) << "'\n";
 
             auto similar = get_similar(m_Args[first_non_flag_idx]);
@@ -926,6 +936,50 @@ private:
         it->value = value;
     }
 
+    bool handle_flag_chaining(std::vector<Option>& options, std::string_view arg) noexcept
+    {
+        if (arg.length() < 3 || string::starts_with(arg, "--"))
+            return false;
+
+        std::size_t flag_count {};
+
+        for (std::size_t i { 1 }; i < arg.size(); i++) {
+
+            bool is_valid = false;
+
+            for (auto& opt : options) {
+
+                if (!opt.flag || opt.active)
+                    continue;
+
+                for (auto& id : opt.identifier) {
+
+                    if (id.length() != 2)
+                        continue;
+
+                    if (arg.at(i) != id.at(1))
+                        continue;
+
+                    is_valid = true;
+
+                    opt.active = true;
+
+                    flag_count++;
+
+                    break;
+                }
+            }
+
+            if (is_valid)
+                continue;
+
+            if (m_Conf.unknown_option_policy == UnknownOptionPolicy::ReportIgnore || m_Conf.unknown_option_policy == UnknownOptionPolicy::ReportRemove)
+                std::cout << color::light_yellow("Warning:") << " The flag: '-" << arg.at(i) << "' is not available." << std::endl;
+        }
+
+        return flag_count > 0;
+    }
+
     std::tuple<bool, bool, bool> is_option(std::vector<Option>& options, std::string_view option)
     {
         const auto& style = m_Conf.value_style;
@@ -935,12 +989,13 @@ private:
                 if (!string::starts_with(option, id))
                     continue;
 
-                if (opt.flag) {
-                    opt.active = true;
-                    return std::make_tuple(true, true, false);
-                }
-
                 if (id.length() == option.length()) {
+
+                    if (opt.flag) {
+                        opt.active = true;
+                        return std::make_tuple(true, true, false);
+                    }
+
                     if (style == ValueStyle::EqualSign)
                         continue;
 
@@ -948,6 +1003,7 @@ private:
 
                     return std::make_tuple(true, false, false);
                 } else {
+
                     if (style == ValueStyle::Space)
                         continue;
 
