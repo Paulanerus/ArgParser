@@ -501,7 +501,9 @@ class ArgParser;
 class Command;
 
 struct Option {
-    std::vector<std::string> identifier;
+    std::string long_form;
+
+    std::string short_form;
 
     std::string help;
 
@@ -518,25 +520,21 @@ struct Option {
 private:
     std::size_t length() const noexcept
     {
-        std::size_t size {};
-        for (auto& id : identifier)
-            size += id.length() + 2;
-
-        return size - (flag ? 2 : -6);
+        return long_form.length() + short_form.length() + (flag ? 2 : 10);
     }
 };
 
-inline Option make_flag(std::initializer_list<std::string>&& identifier, std::string&& help_txt) noexcept
+inline Option make_flag(std::string&& long_form, std::string&& short_form, std::string&& help_txt) noexcept
 {
     return Option {
-        std::move(identifier), std::move(help_txt), true, false, ""
+        std::move(long_form), std::move(short_form), std::move(help_txt), true, false, ""
     };
 }
 
-inline Option make_value(std::initializer_list<std::string>&& identifier, std::string&& help_txt) noexcept
+inline Option make_value(std::string&& long_form, std::string&& short_form, std::string&& help_txt) noexcept
 {
     return Option {
-        std::move(identifier), std::move(help_txt), false, false, ""
+        std::move(long_form), std::move(short_form), std::move(help_txt), false, false, ""
     };
 }
 
@@ -579,13 +577,8 @@ public:
     bool has(std::string_view option_id) const noexcept
     {
         for (auto& opt : m_Options) {
-            if (!opt.active)
-                continue;
-
-            for (auto& id : opt.identifier) {
-                if (option_id == id)
-                    return true;
-            }
+            if (opt.active && (opt.long_form == option_id || opt.short_form == option_id))
+                return true;
         }
 
         return false;
@@ -600,7 +593,7 @@ public:
     template<typename T>
     std::optional<T> get(std::string_view option) const
     {
-        auto it = std::find_if(m_Options.begin(), m_Options.end(), [&option](const Option& opt) { return std::any_of(opt.identifier.begin(), opt.identifier.end(), [&option](const std::string& id) { return option == id; }); });
+        auto it = std::find_if(m_Options.begin(), m_Options.end(), [&option](const Option& opt) { return option == opt.long_form || option == opt.short_form; });
 
         if (it == m_Options.end() || it->value.empty())
             return std::nullopt;
@@ -615,7 +608,7 @@ private:
 
     std::string m_Help;
 
-    bool m_Fallback;
+    bool m_Fallback {};
 
     std::vector<Option> m_Options;
 
@@ -635,7 +628,7 @@ private:
     {
         static std::string fallback;
 
-        auto it = std::find_if(m_Options.begin(), m_Options.end(), [&option](const Option& opt) { return std::any_of(opt.identifier.begin(), opt.identifier.end(), [&option](const std::string& id) { return string::starts_with(option, id); }); });
+        auto it = std::find_if(m_Options.begin(), m_Options.end(), [&option](const Option& opt) { return string::starts_with(option, opt.long_form) || string::starts_with(option, opt.short_form); });
         if (it == m_Options.end())
             return fallback; // Should never happen...
 
@@ -818,7 +811,7 @@ public:
             if (!m_Options.empty()) {
                 std::cout << color::green("Options:\n");
                 for (const auto& opt : m_Options)
-                    std::cout << "    " << string::join_strings(opt.identifier) << (!opt.flag ? (m_Conf.value_style == ValueStyle::EqualSign ? "=<value>" : " <value>") : "") << std::setw((m_MaxLength + 1 + m_Conf.padding) - opt.length()) << " " << opt.help << "\n";
+                    std::cout << "    " << opt.long_form << ", " << opt.short_form << (!opt.flag ? (m_Conf.value_style == ValueStyle::EqualSign ? "=<value>" : " <value>") : "") << std::setw((m_MaxLength + 1 + m_Conf.padding) - opt.length()) << " " << opt.help << "\n";
 
                 std::cout << "\n";
             }
@@ -874,7 +867,7 @@ public:
             for (const auto& opt : command.m_Options)
                 std::cout
                     << "    "
-                    << string::join_strings(opt.identifier)
+                    << opt.long_form << ", " << opt.short_form
                     << (opt.flag ? "" : (m_Conf.value_style == ValueStyle::Space ? "=<value>" : " <value>"))
                     << std::setw((command.m_MaxLength + 1 + m_Conf.padding) - opt.length())
                     << " "
@@ -910,13 +903,8 @@ public:
     bool has(std::string_view option_id) const noexcept
     {
         for (auto& opt : m_Options) {
-            if (!opt.active)
-                continue;
-
-            for (auto& id : opt.identifier) {
-                if (option_id == id)
-                    return true;
-            }
+            if (opt.active && (opt.long_form == option_id || opt.short_form == option_id))
+                return true;
         }
 
         return false;
@@ -931,7 +919,7 @@ public:
     template<typename T>
     std::optional<T> get(std::string_view option) const
     {
-        auto it = std::find_if(m_Options.begin(), m_Options.end(), [&option](const Option& opt) { return std::any_of(opt.identifier.begin(), opt.identifier.end(), [&option](const std::string& id) { return option == id; }); });
+        auto it = std::find_if(m_Options.begin(), m_Options.end(), [&option](const Option& opt) { return option == opt.long_form || option == opt.short_form; });
 
         if (it == m_Options.end() || it->value.empty())
             return std::nullopt;
@@ -952,7 +940,8 @@ private:
 
     void update_value(const std::string& option, const std::string& value) noexcept
     {
-        auto it = std::find_if(m_Options.begin(), m_Options.end(), [&option](const Option& opt) { return std::any_of(opt.identifier.begin(), opt.identifier.end(), [&option](const std::string& id) { return string::starts_with(option, id); }); });
+        auto it = std::find_if(m_Options.begin(), m_Options.end(), [&option](const Option& opt) { return string::starts_with(option, opt.long_form) || string::starts_with(option, opt.short_form); });
+
         if (it == m_Options.end())
             return;
 
@@ -975,22 +964,16 @@ private:
                 if (!opt.flag || opt.active)
                     continue;
 
-                for (auto& id : opt.identifier) {
+                if (opt.short_form.length() != 2 && arg.at(i) != opt.short_form.at(1))
+                    continue;
 
-                    if (id.length() != 2)
-                        continue;
+                is_valid = true;
 
-                    if (arg.at(i) != id.at(1))
-                        continue;
+                opt.active = true;
 
-                    is_valid = true;
+                flag_count++;
 
-                    opt.active = true;
-
-                    flag_count++;
-
-                    break;
-                }
+                break;
             }
 
             if (is_valid)
@@ -1003,47 +986,57 @@ private:
         return flag_count > 0;
     }
 
-    std::tuple<bool, bool, bool> is_option(std::vector<Option>& options, std::string_view option)
+    std::tuple<bool, bool, bool> check_option(std::string_view id, Option& opt, std::string_view option)
     {
         const auto& style = m_Conf.value_style;
 
-        for (auto& opt : options) {
-            for (auto& id : opt.identifier) {
-                if (!string::starts_with(option, id))
-                    continue;
+        static const std::tuple<bool, bool, bool> not_found { false, false, false };
 
-                if (id.length() == option.length()) {
+        if (!string::starts_with(option, id))
+            return not_found;
 
-                    if (opt.flag) {
-                        opt.active = true;
-                        return std::make_tuple(true, true, false);
-                    }
+        const std::size_t id_len = id.length();
+        const std::size_t option_len = option.length();
 
-                    if (style == ValueStyle::EqualSign)
-                        continue;
+        if (id_len == option_len) {
 
-                    opt.active = true;
-
-                    return std::make_tuple(true, false, false);
-                } else {
-
-                    if (style == ValueStyle::Space)
-                        continue;
-
-                    if (option.at(id.length()) != '=')
-                        continue;
-
-                    if (option.length() - id.length() < 2)
-                        continue;
-
-                    opt.active = true;
-
-                    return std::make_tuple(true, false, true);
-                }
+            if (opt.flag) {
+                opt.active = true;
+                return { true, true, false };
             }
+
+            if (style == ValueStyle::EqualSign)
+                return not_found;
+
+            opt.active = true;
+
+            return { true, false, false };
         }
 
-        return std::make_tuple(false, false, false);
+        if (style == ValueStyle::Space || option.at(id_len) != '=' || option_len - id_len < 2)
+            return not_found;
+
+        opt.active = true;
+
+        return { true, false, true };
+    }
+
+    std::tuple<bool, bool, bool> is_option(std::vector<Option>& options, std::string_view option)
+    {
+        for (auto& opt : options) {
+
+            auto result = check_option(opt.long_form, opt, option);
+
+            if (std::get<0>(result))
+                return result;
+
+            result = check_option(opt.short_form, opt, option);
+
+            if (std::get<0>(result))
+                return result;
+        }
+
+        return { false, false, false };
     }
 
     std::optional<Command> find_command_by_id(std::string_view identifier) const noexcept
