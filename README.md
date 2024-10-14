@@ -54,8 +54,8 @@ Example 2:
 
     parser.command("run", "r")
         .help("Runs something.")
-        .option(psap::make_value({"--target", "-t"}, "Select a Target."))
-        .option(psap::make_flag({"--debug", "-d"}, "Runs in debug."))
+        .option(psap::make_value("--target", "-t", "Select a Target."))
+        .option(psap::make_flag("--debug", "-d", "Runs in debug."))
         .action(RUN_ACTION);
 
     //More commands to come
