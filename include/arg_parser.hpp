@@ -40,7 +40,6 @@
 #include <sstream>
 #include <string>
 #include <string_view>
-#include <tuple>
 #include <type_traits>
 #include <unordered_set>
 #include <utility>
@@ -430,6 +429,14 @@ namespace string {
 }
 
 namespace internal {
+    struct OptionResult {
+        bool option_found;
+        bool is_flag;
+        bool has_value;
+    };
+
+    inline const OptionResult NOT_FOUND { false, false, false };
+
     template<typename T>
     inline auto try_catch(T&& t) noexcept -> std::optional<decltype(t())>
     {
@@ -618,7 +625,7 @@ private:
 
     void execute(const ArgParser& parser)
     {
-        if (m_Func == nullptr)
+        if (!m_Func)
             return;
 
         m_Func(parser, *this);
@@ -986,14 +993,12 @@ private:
         return flag_count > 0;
     }
 
-    std::tuple<bool, bool, bool> check_option(std::string_view id, Option& opt, std::string_view option)
+    internal::OptionResult check_option(std::string_view id, Option& opt, std::string_view option)
     {
         const auto& style = m_Conf.value_style;
 
-        static const std::tuple<bool, bool, bool> not_found { false, false, false };
-
         if (!string::starts_with(option, id))
-            return not_found;
+            return internal::NOT_FOUND;
 
         const std::size_t id_len = id.length();
         const std::size_t option_len = option.length();
@@ -1006,7 +1011,7 @@ private:
             }
 
             if (style == ValueStyle::EqualSign)
-                return not_found;
+                return internal::NOT_FOUND;
 
             opt.active = true;
 
@@ -1014,29 +1019,29 @@ private:
         }
 
         if (style == ValueStyle::Space || option.at(id_len) != '=' || option_len - id_len < 2)
-            return not_found;
+            return internal::NOT_FOUND;
 
         opt.active = true;
 
         return { true, false, true };
     }
 
-    std::tuple<bool, bool, bool> is_option(std::vector<Option>& options, std::string_view option)
+    internal::OptionResult is_option(std::vector<Option>& options, std::string_view option)
     {
         for (auto& opt : options) {
 
             auto result = check_option(opt.long_form, opt, option);
 
-            if (std::get<0>(result))
+            if (result.option_found)
                 return result;
 
             result = check_option(opt.short_form, opt, option);
 
-            if (std::get<0>(result))
+            if (result.option_found)
                 return result;
         }
 
-        return { false, false, false };
+        return internal::NOT_FOUND;
     }
 
     std::optional<Command> find_command_by_id(std::string_view identifier) const noexcept
