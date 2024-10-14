@@ -15,6 +15,7 @@ int main(int argc, char* argv[])
     parser.option(make_value("--value", "-v", "Global test value"));
 
     parser.command("help", "h")
+        .fallback()
         .help("Shows help.")
         .action(HELP_ACTION);
 
