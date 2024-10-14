@@ -600,12 +600,15 @@ public:
     template<typename T>
     std::optional<T> get(std::string_view option) const
     {
-        auto it = std::find_if(m_Options.begin(), m_Options.end(), [&option](const Option& opt) { return option == opt.long_form || option == opt.short_form; });
+        for (auto& opt : m_Options) {
+            if (option != opt.long_form || option != opt.short_form)
+                continue;
 
-        if (it == m_Options.end() || it->value.empty())
-            return std::nullopt;
+            if (!opt.value.empty())
+                return internal::convert_value<T>(opt.value);
+        }
 
-        return internal::convert_value<T>(it->value);
+        return std::nullopt;
     }
 
     friend ArgParser;
@@ -635,11 +638,15 @@ private:
     {
         static std::string fallback;
 
-        auto it = std::find_if(m_Options.begin(), m_Options.end(), [&option](const Option& opt) { return string::starts_with(option, opt.long_form) || string::starts_with(option, opt.short_form); });
-        if (it == m_Options.end())
-            return fallback; // Should never happen...
+        for (auto& opt : m_Options) {
 
-        return it->value;
+            if (!string::starts_with(option, opt.long_form) || !string::starts_with(option, opt.short_form))
+                continue;
+
+            return opt.value;
+        }
+
+        return fallback;
     }
 
     std::size_t length() const noexcept
@@ -688,10 +695,15 @@ public:
     void parse(char* argv[], int argc, std::size_t start = 1)
     {
         if (argc - start == 0) {
-            auto it = std::find_if(m_Commands.begin(), m_Commands.end(), [](const Command& cmd) { return cmd.m_Fallback == true; });
 
-            if (it != m_Commands.end())
-                it->execute(*this);
+            for (auto& cmd : m_Commands) {
+                if (!cmd.m_Fallback)
+                    continue;
+
+                cmd.execute(*this);
+
+                break;
+            }
 
             return;
         }
@@ -926,12 +938,15 @@ public:
     template<typename T>
     std::optional<T> get(std::string_view option) const
     {
-        auto it = std::find_if(m_Options.begin(), m_Options.end(), [&option](const Option& opt) { return option == opt.long_form || option == opt.short_form; });
+        for (auto& opt : m_Options) {
+            if (option != opt.long_form || option != opt.short_form)
+                continue;
 
-        if (it == m_Options.end() || it->value.empty())
-            return std::nullopt;
+            if (!opt.value.empty())
+                return internal::convert_value<T>(opt.value);
+        }
 
-        return internal::convert_value<T>(it->value);
+        return std::nullopt;
     }
 
 private:
@@ -947,12 +962,14 @@ private:
 
     void update_value(const std::string& option, const std::string& value) noexcept
     {
-        auto it = std::find_if(m_Options.begin(), m_Options.end(), [&option](const Option& opt) { return string::starts_with(option, opt.long_form) || string::starts_with(option, opt.short_form); });
+        for (auto& opt : m_Options) {
+            if (!string::starts_with(option, opt.long_form) || !string::starts_with(option, opt.short_form))
+                continue;
 
-        if (it == m_Options.end())
-            return;
+            opt.value = value;
 
-        it->value = value;
+            break;
+        }
     }
 
     bool handle_flag_chaining(std::vector<Option>& options, std::string_view arg) noexcept
