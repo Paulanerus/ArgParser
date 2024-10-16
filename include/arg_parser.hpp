@@ -601,7 +601,7 @@ public:
     std::optional<T> get(std::string_view option) const
     {
         for (auto& opt : m_Options) {
-            if (option != opt.long_form || option != opt.short_form)
+            if (option != opt.long_form && option != opt.short_form)
                 continue;
 
             if (!opt.value.empty())
@@ -640,7 +640,7 @@ private:
 
         for (auto& opt : m_Options) {
 
-            if (!string::starts_with(option, opt.long_form) || !string::starts_with(option, opt.short_form))
+            if (!string::starts_with(option, opt.long_form) && !string::starts_with(option, opt.short_form))
                 continue;
 
             return opt.value;
@@ -939,7 +939,7 @@ public:
     std::optional<T> get(std::string_view option) const
     {
         for (auto& opt : m_Options) {
-            if (option != opt.long_form || option != opt.short_form)
+            if (option != opt.long_form && option != opt.short_form)
                 continue;
 
             if (!opt.value.empty())
@@ -963,7 +963,7 @@ private:
     void update_value(const std::string& option, const std::string& value) noexcept
     {
         for (auto& opt : m_Options) {
-            if (!string::starts_with(option, opt.long_form) || !string::starts_with(option, opt.short_form))
+            if (!string::starts_with(option, opt.long_form) && !string::starts_with(option, opt.short_form))
                 continue;
 
             opt.value = value;
