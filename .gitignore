@@ -1,9 +1,10 @@
-.vscode/ 
+.zed
+.vscode/
 
 bin/
-
 build/
 
 Makefile
-
 *.sln
+
+compile_flags.txt
