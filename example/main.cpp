@@ -24,12 +24,14 @@ int main(int argc, char* argv[])
         .action(NEW_ACTION);
 
     parser.command("add", "a")
+        .group("dep", "Dependency Management")
         .help("Adds a new dependency.")
         .option(make_value("--branch", "-b", "Select a specific branch."))
         .option(make_flag("--link", "-l", "Links the specified library."))
         .action(ADD_ACTION);
 
     parser.command("remove", "rm", "delete", "del")
+        .group("dep")
         .help("Removes a dependency.")
         .action(REMOVE_ACTION);
 

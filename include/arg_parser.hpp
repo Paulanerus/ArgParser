@@ -437,6 +437,21 @@ namespace internal {
 
     inline const OptionResult NOT_FOUND { false, false, false };
 
+    struct Group {
+        std::string tag;
+        std::string display_name;
+
+        inline bool has_none() const noexcept
+        {
+            return tag.empty();
+        }
+
+        inline std::string_view to_string() const noexcept
+        {
+            return display_name.empty() ? tag : display_name;
+        }
+    };
+
     template<typename T>
     inline auto try_catch(T&& t) noexcept -> std::optional<decltype(t())>
     {
@@ -552,6 +567,23 @@ public:
     {
     }
 
+    Command(const Command& other) = default;
+    Command& operator=(const Command& other) = default;
+
+    Command(Command&& other) = default;
+    Command& operator=(Command&& other) = default;
+
+    Command& group(std::string&& tag, std::string&& display_name = "")
+    {
+        if (tag.empty())
+            return *this;
+
+        m_Group.tag = std::move(tag);
+        m_Group.display_name = std::move(display_name);
+
+        return *this;
+    }
+
     Command& help(std::string&& help) noexcept
     {
         m_Help = std::move(help);
@@ -611,10 +643,17 @@ public:
         return std::nullopt;
     }
 
+    bool operator<(const Command& other) const noexcept
+    {
+        return m_Group.tag < other.m_Group.tag;
+    }
+
     friend ArgParser;
 
 private:
     std::vector<std::string> m_Identifier;
+
+    internal::Group m_Group { "", "" };
 
     std::string m_Help;
 
@@ -837,8 +876,17 @@ public:
 
             std::cout << color::cyan("Commands:\n");
 
-            for (const auto& cmd : m_Commands)
+            std::string_view current;
+            for (auto& cmd : m_Commands) {
+                if (current != cmd.m_Group.tag) {
+                    current = cmd.m_Group.tag;
+
+                    // FIXME: Print group display name to console output.
+                    std::cout << cmd.m_Group.to_string() << std::endl;
+                }
+
                 std::cout << "    " << string::join_strings(cmd.m_Identifier) << std::setw((m_MaxLength + 1 + m_Conf.padding) - cmd.length()) << " " << cmd.m_Help << "\n";
+            }
 
             std::cout << "\n";
 
@@ -883,7 +931,7 @@ public:
         else {
             std::cout << color::green("Options:\n");
 
-            for (const auto& opt : command.m_Options)
+            for (auto& opt : command.m_Options)
                 std::cout
                     << "    "
                     << opt.long_form << ", " << opt.short_form
